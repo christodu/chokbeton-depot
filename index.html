@@ -1569,7 +1569,7 @@ function renderPersonnelList(){
   if(!CHEFS.length){cont.innerHTML='<div class="empty" style="padding:20px">Aucun intervenant</div>';return;}
   cont.innerHTML=CHEFS.map((nom,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border);${i===CHEFS.length-1?'border-bottom:none':''}">
     <span style="font-size:13px">${nom}</span>
-    <button class="btn btn-sm" onclick="deletePersonnel('${nom.replace(/'/g,"\\'")}'))" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)">✕</button>
+    <button class="btn btn-sm" onclick="deletePersonnel(this.dataset.n)" data-n="${nom}" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)">✕</button>
   </div>`).join('');
 }
 async function addPersonnel(){
