@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHOK BETON — Suivi Matériel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
+  :root {
+    --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#242424; --border:#2e2e2e;
+    --accent:#f97316; --accent2:#fb923c; --text:#f0f0f0; --muted:#888;
+    --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --yellow:#eab308;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+  /* HEADER */
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100;gap:8px;flex-wrap:wrap}
+  .logo{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--accent);letter-spacing:-0.5px;white-space:nowrap}
+  .logo span{color:var(--text)}
+  nav{display:flex;gap:3px;flex-wrap:wrap}
+  nav button{background:none;border:1px solid transparent;color:var(--muted);padding:6px 13px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap}
+  nav button:hover{color:var(--text);border-color:var(--border)}
+  nav button.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
+  .header-right{display:flex;align-items:center;gap:8px}
+  .role-badge{font-family:'DM Mono',monospace;font-size:11px;padding:4px 10px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+  .role-badge.depot{color:var(--accent);border-color:var(--accent)}
+  .role-badge.direction{color:var(--blue);border-color:var(--blue)}
+
+  /* ALERTE BADGE header */
+  #alerte-badge{display:none;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:4px;cursor:pointer;font-family:'DM Mono',monospace}
+
+  /* PAGES */
+  .page{display:none;padding:20px;max-width:1200px;margin:0 auto}
+  .page.active{display:block}
+  #page-login{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 65px)}
+
+  /* LOGIN */
+  .login-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:36px;width:100%;max-width:380px}
+  .login-box h2{font-family:'Syne',sans-serif;font-size:20px;margin-bottom:6px}
+  .login-box p{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .login-options{display:flex;flex-direction:column;gap:10px}
+  .login-btn{padding:14px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;text-align:left;transition:all .15s;display:flex;align-items:center;gap:12px;width:100%}
+  .login-btn:hover{border-color:var(--accent)}
+  .login-btn.primary{background:var(--accent);color:#000;border-color:var(--accent)}
+  .login-btn .icon{font-size:20px}
+
+  /* PIN */
+  .pin-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:999}
+  .pin-modal.open{display:flex}
+  .pin-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px;width:320px;text-align:center}
+  .pin-box h3{font-family:'Syne',sans-serif;margin-bottom:8px}
+  .pin-box p{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .pin-input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-size:22px;text-align:center;letter-spacing:10px;font-family:'DM Mono',monospace;margin-bottom:10px}
+  .pin-input:focus{outline:none;border-color:var(--accent)}
+  .pin-err{color:var(--red);font-size:12px;min-height:18px;margin-bottom:8px}
+
+  /* SECTION HEADER */
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:10px;flex-wrap:wrap}
+  .section-header h2{font-family:'Syne',sans-serif;font-size:18px}
+  .section-header p{color:var(--muted);font-size:13px;margin-top:2px}
+
+  /* CARDS */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px}
+  .card h3{font-family:'Syne',sans-serif;font-size:15px;margin-bottom:14px;color:var(--accent)}
+
+  /* VUE MATIN */
+  .matin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:16px}
+  .matin-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .15s;position:relative}
+  .matin-card:hover{border-color:var(--accent)}
+  .matin-card.selected{border-color:var(--accent);background:rgba(249,115,22,.06)}
+  .matin-card .chef-name{font-weight:700;font-size:15px;margin-bottom:6px}
+  .matin-card .chef-machines{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .matin-card .checkmark{position:absolute;top:12px;right:12px;width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s}
+  .matin-card.selected .checkmark{background:var(--accent);border-color:var(--accent);color:#000}
+
+  /* FAMILLE INLINE */
+  .famille-btn-inline{padding:10px 18px;background:var(--surface2);border:2px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;transition:all .15s;white-space:nowrap}
+  .famille-btn-inline:hover{border-color:var(--accent);color:var(--accent)}
+  .famille-btn-inline.selected{border-color:var(--accent);background:rgba(249,115,22,.12);color:var(--accent)}
+
+  /* DEPART CAMION */
+  .depart-step{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px}
+  .depart-step .step-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+
+  /* RECHERCHE GLOBALE */
+  .global-search-wrap{position:relative;margin-bottom:4px}
+  #global-search{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px 10px 36px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;transition:border-color .15s}
+  #global-search:focus{outline:none;border-color:var(--accent)}
+  .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none}
+  #search-results{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-top:6px;display:none;max-height:340px;overflow-y:auto}
+  .search-result-item{padding:12px 16px;border-bottom:1px solid var(--border);transition:background .1s;cursor:default}
+  .search-result-item:last-child{border-bottom:none}
+  .search-result-item:hover{background:var(--surface2)}
+  .sri-num{font-family:'DM Mono',monospace;font-weight:700;color:var(--accent);font-size:14px}
+  .sri-model{color:var(--muted);font-size:12px;margin-left:8px}
+  .sri-loc{margin-top:4px;font-size:13px}
+  .sri-days{font-family:'DM Mono',monospace;font-size:12px;margin-left:6px}
+
+  /* SUGGESTION DERNIÈRES MACHINES */
+  .suggestion-box{background:rgba(249,115,22,.07);border:1px solid rgba(249,115,22,.25);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+  .suggestion-box .suggestion-title{font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:8px}
+  .suggestion-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .suggestion-chip{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 10px;font-size:12px;font-family:'DM Mono',monospace;cursor:pointer;transition:all .1s}
+  .suggestion-chip:hover{border-color:var(--accent);color:var(--accent)}
+  .suggestion-chip.used{opacity:.4;cursor:default;text-decoration:line-through}
+
+  /* SAISIE MULTI */
+  .multi-hint{font-size:11px;color:var(--muted);margin-top:4px}
+
+  /* FORM */
+  .form-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .form-group{display:flex;flex-direction:column;gap:5px;flex:1;min-width:150px}
+  label{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  input,select,textarea{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;transition:border-color .15s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  select option{background:var(--surface2)}
+  textarea{resize:vertical;min-height:60px}
+
+  /* BUTTONS */
+  .btn{padding:9px 18px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .15s}
+  .btn-primary{background:var(--accent);color:#000}
+  .btn-primary:hover{background:var(--accent2)}
+  .btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .btn-secondary:hover{border-color:var(--accent)}
+  .btn-green{background:var(--green);color:#000}
+  .btn-blue{background:var(--blue);color:#fff}
+  .btn-sm{padding:5px 12px;font-size:12px}
+  .btn-xl{padding:14px 24px;font-size:15px;font-weight:700;width:100%}
+
+  /* TABLE */
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:9px 12px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);background:var(--surface2)}
+  td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,.02)}
+
+  /* BADGES */
+  .badge{display:inline-block;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:600;font-family:'DM Mono',monospace}
+  .badge-green{background:rgba(34,197,94,.15);color:var(--green)}
+  .badge-orange{background:rgba(249,115,22,.15);color:var(--accent)}
+  .badge-red{background:rgba(239,68,68,.15);color:var(--red)}
+  .badge-blue{background:rgba(59,130,246,.15);color:var(--blue)}
+  .badge-yellow{background:rgba(234,179,8,.15);color:var(--yellow)}
+  .badge-gray{background:rgba(255,255,255,.08);color:var(--muted)}
+
+  /* KPI */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+  .kpi .val{font-family:'Syne',sans-serif;font-size:26px;font-weight:800}
+  .kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+  .kpi.accent{border-color:var(--accent)} .kpi.green{border-color:var(--green)}
+  .kpi.red{border-color:var(--red)} .kpi.blue{border-color:var(--blue)}
+
+  /* TABS */
+  .tabs{display:flex;gap:2px;margin-bottom:18px;border-bottom:1px solid var(--border);overflow-x:auto}
+  .tab{padding:8px 16px;background:none;border:none;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  /* TOAST */
+  #toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:#000;padding:11px 18px;border-radius:8px;font-weight:600;font-size:13px;z-index:9999;display:none;animation:slideIn .2s ease}
+  @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+  /* MODAL */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:500;padding:16px}
+  .modal.open{display:flex}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:26px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto}
+  .modal-box h3{font-family:'Syne',sans-serif;font-size:16px;margin-bottom:16px}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+
+  /* CHIPS */
+  .chip-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 10px;font-size:12px;font-family:'DM Mono',monospace;cursor:pointer;transition:all .1s;display:flex;align-items:center;gap:6px}
+  .chip:hover{border-color:var(--red);color:var(--red)}
+  .chip .rm{color:var(--muted)}
+
+  /* FAMILLE / MODELE */
+  .famille-btn{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;transition:all .15s;width:100%}
+  .famille-btn:hover{border-color:var(--accent);background:rgba(249,115,22,.06)}
+  .famille-icon{font-size:22px;flex-shrink:0}
+  .famille-nom{font-size:15px;font-weight:600}
+  .famille-detail{font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
+  .modele-btn{padding:10px 20px;background:var(--surface2);border:2px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;transition:all .15s}
+  .modele-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .modele-btn.selected{border-color:var(--accent);background:rgba(249,115,22,.12);color:var(--accent);font-weight:700}
+
+  /* ALERTES INLINE */
+  .alerte-inline{border-left:3px solid;border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;font-size:13px}
+  .alerte-inline.orange{border-color:var(--accent);background:rgba(249,115,22,.06)}
+  .alerte-inline.red{border-color:var(--red);background:rgba(239,68,68,.06)}
+  .alerte-inline strong{font-family:'DM Mono',monospace}
+
+  /* MISC */
+  .separator{height:1px;background:var(--border);margin:16px 0}
+  .mono{font-family:'DM Mono',monospace}
+  .text-muted{color:var(--muted)}
+  .text-accent{color:var(--accent)}
+  .fw600{font-weight:600}
+  .mt8{margin-top:8px}
+  .flex-between{display:flex;justify-content:space-between;align-items:center}
+  .days-out{font-family:'DM Mono',monospace;font-size:12px}
+  .empty{text-align:center;padding:36px;color:var(--muted);font-size:13px}
+  .empty .icon{font-size:30px;margin-bottom:8px}
+
+  @media(max-width:640px){
+    nav button{padding:5px 10px;font-size:12px}
+    .logo{font-size:17px}
+    .page{padding:14px}
+    .kpi .val{font-size:22px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">CHOK BETON<span> Matériel</span></div>
+  <nav>
+    <button class="active" onclick="showPage('login')" id="nav-login">Connexion</button>
+    <button onclick="showPage('matin')" id="nav-matin" style="display:none">🌅 Matin</button>
+    <button onclick="showPage('depot')" id="nav-depot" style="display:none">Dépôt</button>
+    <button onclick="showPage('inventaire')" id="nav-inventaire" style="display:none">Inventaire</button>
+    <button onclick="openModalPersonnel()" id="nav-personnel" style="display:none">👷 Personnel</button>
+    <button onclick="showPage('direction')" id="nav-direction" style="display:none">Direction</button>
+  </nav>
+  <div class="header-right">
+    <!-- Recherche globale compacte -->
+    <div id="header-search-wrap" style="display:none;position:relative">
+      <input type="text" id="global-search" placeholder="🔍 Rechercher une machine…"
+        oninput="globalSearch(this.value)"
+        onfocus="if(this.value)document.getElementById('search-results').style.display='block'"
+        style="width:220px;padding:7px 12px;font-size:13px"
+        onblur="setTimeout(()=>document.getElementById('search-results').style.display='none',200)">
+      <div id="search-results"></div>
+    </div>
+    <span id="alerte-badge" onclick="goToAlertes()">⚠ <span id="alerte-count">0</span></span>
+    <span class="role-badge" id="role-badge">Non connecté</span>
+    <button class="btn btn-secondary btn-sm" id="btn-logout" style="display:none" onclick="logout()">Déco.</button>
+  </div>
+</header>
+
+<!-- ══ LOGIN ══ -->
+<div id="page-login" class="page active">
+  <div class="login-box">
+    <h2>Accès CBC Matériel</h2>
+    <p>Sélectionnez votre profil</p>
+    <div class="login-options">
+      <button class="login-btn primary" onclick="loginDepot()">
+        <span class="icon">🏭</span>
+        <div><div>Responsable Dépôt</div><div style="font-size:11px;opacity:.7;font-weight:400">Gestion des mouvements</div></div>
+      </button>
+      <button class="login-btn" onclick="openPinModal()">
+        <span class="icon">📊</span>
+        <div><div>Direction</div><div style="font-size:11px;opacity:.7;font-weight:400">Vue globale — code requis</div></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN MODAL -->
+<div class="pin-modal" id="pin-modal">
+  <div class="pin-box">
+    <h3>🔒 Accès Direction</h3>
+    <p>Code à 4 chiffres</p>
+    <input type="password" class="pin-input" id="pin-input" maxlength="4" placeholder="••••"
+      oninput="checkPin()" onkeydown="if(event.key==='Escape')closePinModal()">
+    <div class="pin-err" id="pin-err"></div>
+    <button class="btn btn-secondary" style="width:100%" onclick="closePinModal()">Annuler</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE MATIN — Vue départ du jour
+════════════════════════════════════════════════════════════ -->
+<div id="page-matin" class="page">
+  <div class="section-header">
+    <div>
+      <h2>🌅 Vue Matin</h2>
+      <p id="matin-date-label">Chargement…</p>
+    </div>
+    <button class="btn btn-primary" onclick="showPage('depot');showDepotTab('sortie')">+ Nouvelle sortie</button>
+  </div>
+
+  <!-- Alertes rapides -->
+  <div id="matin-alertes"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showMatinTab('depart')">🚚 Départ camion</button>
+    <button class="tab" onclick="showMatinTab('terrain')">📍 Sur le terrain</button>
+    <button class="tab" onclick="showMatinTab('retours')">📥 Retours du jour</button>
+  </div>
+
+  <!-- DÉPART CAMION -->
+  <div id="matin-tab-depart">
+    <div class="card">
+      <h3>🚚 Préparer un départ</h3>
+
+      <!-- ÉTAPE 1 : Intervenant -->
+      <div class="depart-step">
+        <div class="step-num">① Intervenant</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="depart-chef" onchange="onDepartChefChange()" style="flex:1;min-width:180px"></select>
+          <button class="btn btn-secondary btn-sm" onclick="toggleSaisieManuelle()" id="btn-manuel" style="white-space:nowrap">✏️ Autre nom</button>
+        </div>
+        <div id="saisie-manuelle-wrap" style="display:none;margin-top:8px">
+          <input type="text" id="depart-chef-manuel"
+            placeholder="Saisir un nom manuellement…"
+            oninput="onDepartChefManuelChange()"
+            style="width:100%">
+          <div class="multi-hint">Ce nom sera enregistré dans l'historique</div>
+        </div>
+      </div>
+
+      <!-- ÉTAPE 2 : Sélection matériel par famille -->
+      <div class="depart-step">
+        <div class="step-num">② Choisir le matériel</div>
+
+        <!-- Boutons famille -->
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <button class="famille-btn-inline" id="fbtn-Carotteuse" onclick="selectDepartFamille('Carotteuse')">
+            ⚙️ Carotteuse
+          </button>
+          <button class="famille-btn-inline" id="fbtn-Scie" onclick="selectDepartFamille('Scie')">
+            🔵 Scie
+          </button>
+        </div>
+
+        <!-- Boutons modèle (apparaissent après choix famille) -->
+        <div id="depart-modeles-wrap" style="display:none;margin-bottom:10px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Modèle exact</div>
+          <div id="depart-modele-buttons" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+
+        <!-- Machines disponibles filtrées -->
+        <div id="depart-machines-dispo" style="display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Machines disponibles au dépôt — cliquez pour ajouter</div>
+          <div id="depart-dispo-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+
+        <!-- Ou saisie manuelle numéro -->
+        <div style="margin-top:10px">
+          <div style="display:flex;gap:8px">
+            <input type="text" id="depart-num" placeholder="Ou saisir N° directement : DD350-01 TS10-02 …"
+              oninput="this.value=this.value.toUpperCase()"
+              onkeydown="if(event.key==='Enter')addDepart()"
+              style="flex:1">
+            <button class="btn btn-secondary" onclick="addDepart()">+ Ajouter</button>
+          </div>
+          <div class="multi-hint">Séparez plusieurs numéros par espace ou virgule</div>
+        </div>
+      </div>
+
+      <!-- ÉTAPE 3 : Suggestions historique -->
+      <div class="depart-step" id="depart-suggestion-wrap" style="display:none">
+        <div class="step-num">③ Dernières machines de cet intervenant</div>
+        <div class="suggestion-chips" id="depart-suggestions"></div>
+      </div>
+
+      <!-- Chips sélectionnés -->
+      <div id="depart-chips" class="chip-list" style="margin-top:2px;min-height:20px"></div>
+
+      <div class="depart-step" style="margin-top:10px">
+        <div class="step-num">④ Date de départ</div>
+        <input type="date" id="depart-date" style="width:200px">
+      </div>
+
+      <div class="separator"></div>
+      <button class="btn btn-primary btn-xl" onclick="validerDepart()">✓ Valider le départ camion</button>
+    </div>
+  </div>
+
+  <!-- SUR LE TERRAIN -->
+  <div id="matin-tab-terrain" style="display:none">
+    <div id="terrain-content"></div>
+  </div>
+
+  <!-- RETOURS DU JOUR -->
+  <div id="matin-tab-retours" style="display:none">
+    <div class="card">
+      <h3>📥 Enregistrer un retour</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Chef d'équipe</label>
+          <select id="matin-retour-chef" onchange="loadMatinRetourMachines()" style="width:100%"></select>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="matin-retour-date">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>État au retour</label>
+        <select id="matin-retour-etat">
+          <option value="OK">✅ OK — Opérationnel</option>
+          <option value="PANNE">⚠️ En panne</option>
+          <option value="REPARATION">🔧 À réparer</option>
+        </select>
+      </div>
+      <div id="matin-retour-list"></div>
+      <div class="separator"></div>
+      <button class="btn btn-green" onclick="validerMatinRetour()">✓ Valider le retour</button>
+    </div>
+    <div id="retours-jour-list"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE DÉPÔT
+════════════════════════════════════════════════════════════ -->
+<div id="page-depot" class="page">
+  <div class="section-header">
+    <div><h2>Mouvements de matériel</h2><p>Sorties, retours et transferts</p></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="showDepotTab('sortie')">📤 Sortie</button>
+    <button class="tab" onclick="showDepotTab('retour')">📥 Retour</button>
+    <button class="tab" onclick="showDepotTab('transfert')">🔄 Transfert</button>
+    <button class="tab" onclick="showDepotTab('consommables')">🔩 Consommables</button>
+  </div>
+
+  <!-- SORTIE -->
+  <div id="tab-sortie">
+    <div class="card">
+      <h3>📤 Nouvelle sortie</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Chef d'équipe</label>
+          <select id="sortie-chef" onchange="loadSortiesuggestions()"></select>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="sortie-date">
+        </div>
+      </div>
+      <div id="sortie-suggestion-wrap" style="display:none">
+        <div class="suggestion-box">
+          <div class="suggestion-title">💡 Dernières machines utilisées — cliquez pour ajouter</div>
+          <div class="suggestion-chips" id="sortie-suggestions"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>Numéro(s) machine</label>
+          <input type="text" id="sortie-num" placeholder="DD350-01 TS10-02 …"
+            oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')addToSortie()">
+          <span class="multi-hint">Séparez plusieurs numéros par espace ou virgule</span>
+        </div>
+        <div class="form-group" style="flex:0;justify-content:flex-end;padding-top:20px">
+          <button class="btn btn-primary" onclick="addToSortie()">+ Ajouter</button>
+        </div>
+      </div>
+      <div id="sortie-chips" class="chip-list"></div>
+      <div class="separator"></div>
+      <button class="btn btn-primary" onclick="validerSortie()">✓ Valider la sortie</button>
+    </div>
+  </div>
+
+  <!-- RETOUR -->
+  <div id="tab-retour" style="display:none">
+    <div class="card">
+      <h3>📥 Retour au dépôt</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Chef d'équipe</label>
+          <select id="retour-chef" onchange="loadChefMachines()"></select>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="retour-date">
+        </div>
+      </div>
+      <div class="form-group mt8" style="margin-bottom:12px">
+        <label>État au retour</label>
+        <select id="retour-etat">
+          <option value="OK">✅ OK — Opérationnel</option>
+          <option value="PANNE">⚠️ En panne</option>
+          <option value="REPARATION">🔧 À réparer</option>
+        </select>
+      </div>
+      <div id="chef-machines-list"></div>
+      <div class="separator"></div>
+      <button class="btn btn-green" onclick="validerRetour()">✓ Valider le retour</button>
+    </div>
+  </div>
+
+  <!-- TRANSFERT -->
+  <div id="tab-transfert" style="display:none">
+    <div class="card">
+      <h3>🔄 Transfert entre chefs</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>De (chef actuel)</label>
+          <select id="transf-from" onchange="loadTransfMachines()"></select>
+        </div>
+        <div class="form-group">
+          <label>Vers (nouveau chef)</label>
+          <select id="transf-to"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="transf-date">
+        </div>
+        <div class="form-group">
+          <label>Motif</label>
+          <input type="text" id="transf-motif" placeholder="Ex: renfort chantier">
+        </div>
+      </div>
+      <div id="transf-machines-list"></div>
+      <div class="separator"></div>
+      <button class="btn btn-blue" onclick="validerTransfert()">✓ Valider le transfert</button>
+    </div>
+  </div>
+
+  <!-- CONSOMMABLES -->
+  <div id="tab-consommables" style="display:none">
+    <div class="card">
+      <h3>🔩 Gestion des consommables</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Type</label>
+          <select id="conso-type">
+            <option>Lames Ø350</option><option>Lames Ø400</option><option>Lames Ø500</option>
+            <option>Couronnes Ø50</option><option>Couronnes Ø82</option><option>Couronnes Ø102</option>
+            <option>Couronnes Ø152</option><option>Couronnes Ø202</option>
+            <option>Câble diamanté WS</option><option>Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Opération</label>
+          <select id="conso-op">
+            <option value="sortie">Sortie (vers chantier)</option>
+            <option value="entree">Entrée (réception stock)</option>
+            <option value="perte">Perte / Casse</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Quantité</label>
+          <input type="number" id="conso-qty" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label>Chef (si sortie)</label>
+          <select id="conso-chef"></select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="validerConso()">✓ Enregistrer</button>
+    </div>
+    <div class="card">
+      <h3>Stock consommables</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Type</th><th>Stock dépôt</th><th>Sorti chantier</th><th>Total</th></tr></thead>
+          <tbody id="conso-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE INVENTAIRE
+════════════════════════════════════════════════════════════ -->
+<div id="page-inventaire" class="page">
+  <div class="section-header">
+    <div><h2>Parc matériel</h2><p>Catalogue des machines</p></div>
+    <button class="btn btn-primary" onclick="openAddMachine()">+ Nouvelle machine</button>
+  </div>
+  <div class="search-bar">
+    <input type="text" id="inv-search" placeholder="N°, modèle, fournisseur…" oninput="renderInventaire()">
+    <select id="inv-filter-cat" onchange="renderInventaire()">
+      <option value="">Toutes familles</option>
+      <option>Carotteuse</option>
+      <option>Scie</option>
+      <option value="Scie murale">↳ Scie murale</option>
+      <option value="Scie à câble">↳ Scie à câble</option>
+      <option>Autre matériel</option>
+    </select>
+    <select id="inv-filter-etat" onchange="renderInventaire()">
+      <option value="">Tous états</option>
+      <option>Actif</option><option>En panne</option><option>En réparation</option><option>Réformé</option>
+    </select>
+  </div>
+  <div class="card" style="padding:0">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>N° Interne</th><th>N° Fournisseur</th><th>Famille</th><th>Modèle</th><th>État</th><th>Localisation</th><th></th></tr></thead>
+        <tbody id="inventaire-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE DIRECTION
+════════════════════════════════════════════════════════════ -->
+<div id="page-direction" class="page">
+  <div class="section-header">
+    <div><h2>Tableau de bord Direction</h2><p id="last-refresh">—</p></div>
+    <button class="btn btn-secondary" onclick="renderDirection()">↻ Actualiser</button>
+  </div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+  <div class="tabs">
+    <button class="tab active" onclick="showDirTab('parc')">🔍 Vue parc</button>
+    <button class="tab" onclick="showDirTab('chefs')">👷 Par chef</button>
+    <button class="tab" onclick="showDirTab('historique')">📋 Historique</button>
+    <button class="tab" onclick="showDirTab('alertes')" id="dir-tab-alertes-btn">⚠️ Alertes</button>
+  </div>
+  <div id="dir-tab-parc">
+    <div class="search-bar">
+      <input type="text" id="dir-search" placeholder="Filtrer…" oninput="renderDirParc()">
+      <select id="dir-filter-loc" onchange="renderDirParc()">
+        <option value="">Toute localisation</option>
+        <option value="depot">Au dépôt</option>
+        <option value="chantier">En chantier</option>
+      </select>
+    </div>
+    <div class="card" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>N° Interne</th><th>Modèle</th><th>État</th><th>Localisation</th><th>Chef</th><th>Sorti depuis</th></tr></thead>
+          <tbody id="dir-parc-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div id="dir-tab-chefs" style="display:none"><div id="dir-chefs-content"></div></div>
+  <div id="dir-tab-historique" style="display:none">
+    <div class="search-bar">
+      <select id="hist-chef-filter" onchange="renderHistorique()"><option value="">Tous les chefs</option></select>
+      <select id="hist-type-filter" onchange="renderHistorique()">
+        <option value="">Tous types</option>
+        <option value="SORTIE">Sortie</option><option value="RETOUR">Retour</option><option value="TRANSFERT">Transfert</option>
+      </select>
+    </div>
+    <div class="card" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Type</th><th>Machine(s)</th><th>Chef</th><th>Détail</th></tr></thead>
+          <tbody id="historique-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div id="dir-tab-alertes" style="display:none"><div id="alertes-content"></div></div>
+</div>
+
+<!-- MODAL AJOUT MACHINE -->
+<div class="modal" id="modal-machine">
+  <div class="modal-box">
+    <h3>➕ Ajouter une machine</h3>
+    <div id="step-famille">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Étape 1 — Famille d'outil</p>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <button class="famille-btn" onclick="selectFamille('Carotteuse')">
+          <span class="famille-icon">⚙️</span>
+          <div><div class="famille-nom">Carotteuse</div><div class="famille-detail">DD350</div></div>
+        </button>
+        <button class="famille-btn" onclick="selectFamille('Scie')">
+          <span class="famille-icon">🔵</span>
+          <div><div class="famille-nom">Scie</div><div class="famille-detail">TS5 · TS10 · TS20 · WS15 · WS30</div></div>
+        </button>
+        <button class="famille-btn" onclick="selectFamille('Autre matériel')">
+          <span class="famille-icon">🔧</span>
+          <div><div class="famille-nom">Autre matériel</div><div class="famille-detail">Groupe électrogène, pompe, etc.</div></div>
+        </button>
+      </div>
+      <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('modal-machine')">Annuler</button></div>
+    </div>
+    <div id="step-modele" style="display:none">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:4px">Étape 2 — Modèle exact</p>
+      <div id="famille-label" style="font-family:'Syne',sans-serif;font-size:15px;color:var(--accent);margin-bottom:14px"></div>
+      <div id="modele-buttons" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>N° Fournisseur (marqué sur la machine)</label>
+        <input type="text" id="m-num-four" placeholder="Ex: 12345-ABC">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>N° Interne <span style="color:var(--muted);font-size:10px;font-weight:400">(généré auto — modifiable)</span></label>
+        <input type="text" id="m-num-int" placeholder="Ex: DD350-01" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>État initial</label>
+        <select id="m-etat">
+          <option>Actif</option><option>En panne</option><option>En réparation</option><option>Réformé</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Notes</label>
+        <textarea id="m-notes" placeholder="Observations…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="backToFamille()">← Retour</button>
+        <button class="btn btn-primary" onclick="saveMachine()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIT ÉTAT -->
+<div class="modal" id="modal-etat">
+  <div class="modal-box">
+    <h3>✏️ Modifier l'état</h3>
+    <input type="hidden" id="edit-machine-id">
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Nouvel état</label>
+      <select id="edit-etat">
+        <option>Actif</option><option>En panne</option><option>En réparation</option><option>Réformé</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Notes</label>
+      <textarea id="edit-notes" placeholder="Observations…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-etat')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveEtat()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GESTION PERSONNEL -->
+<div class="modal" id="modal-personnel">
+  <div class="modal-box" style="max-width:520px">
+    <h3>👷 Gestion du personnel</h3>
+
+    <!-- Ajouter un nom -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Ajouter un intervenant</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="new-personnel-nom" placeholder="NOM Prénom" style="flex:1"
+          onkeydown="if(event.key==='Enter')addPersonnel()">
+        <button class="btn btn-primary" onclick="addPersonnel()">+ Ajouter</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Format recommandé : NOM Prénom — ex: MARTIN Jean</div>
+    </div>
+
+    <!-- Liste actuelle -->
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+      Liste actuelle — <span id="personnel-count">0</span> intervenants
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;max-height:340px;overflow-y:auto" id="personnel-list"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-personnel')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════════
+const PIN_DIRECTION = '1234'; // ← CHANGER ICI
+const SEUIL_ALERTE_JOURS = 14;
+
+// Liste par défaut du personnel (NOM Prénom, triée alphabétiquement par nom)
+const CHEFS_DEFAULT = [
+  'ADOU Stéphane',
+  'AKOVI Yaovi',
+  'BAKAYOKO Moussa',
+  'BAVESA Mayala',
+  'CAMARA Mady Oualy',
+  'CISSE Souleymane',
+  'COLPIN Maxence',
+  'COULIBALY Koniba',
+  'DE JESUS Marcos',
+  'ELVIS Elvis',
+  'GARABA Garaba',
+  'GARCIA Gomes Cumbuessana',
+  'HAMARA Hamara',
+  'JUNIOR Junior',
+  'LEROY David',
+  'LOURENCО Nelson Daniel',
+  'MABELA Didier',
+  'MAKALOU Ibrahim Kalilou',
+  'MALUNGILA Jhonny Lunsona',
+  'MAMBI Roger',
+  'MBIDI André',
+  'MENDES Evileno Ulisses',
+  'MPAKA Mayela',
+  'NDOBE Ernest',
+  'OMAR',
+  'PANEL Bertrand',
+  'SENCIER Laurent',
+  'SISSOKO Fily',
+  'SOUKOUNA Mahamadou',
+  'YAN Zan',
+  'YATABARI Ibrahima',
+  'ZAN Zan'
+];
+
+// Personnel géré dynamiquement (persisté en localStorage)
+function loadPersonnel(){
+  const saved = load('chok_personnel', null);
+  if(saved && Array.isArray(saved)) return saved;
+  // Première utilisation : initialiser avec la liste par défaut
+  save('chok_personnel', CHEFS_DEFAULT);
+  return [...CHEFS_DEFAULT];
+}
+function savePersonnel(list){ save('chok_personnel', list); }
+// CHEFS est toujours la liste live triée
+let CHEFS = loadPersonnel().sort((a,b)=>a.localeCompare(b,'fr'));
+
+const FAMILLES = ['Carotteuse','Scie','Autre matériel'];
+const MODELES_BY_CAT = {
+  'Carotteuse':['DD350'],
+  'Scie':['TS5','TS10','TS20','HQ220','HQ20','WS15','WS30'],
+  'Autre matériel':['Groupe électrogène','Pompe','Aspirateur','Autre']
+};
+const SCIE_SOUS_FAMILLE = {
+  TS5:'Scie murale',TS10:'Scie murale',TS20:'Scie murale',
+  HQ220:'Scie murale',HQ20:'Scie murale',
+  WS15:'Scie à câble',WS30:'Scie à câble'
+};
+const CONSO_TYPES = ['Lames Ø350','Lames Ø400','Lames Ø500','Couronnes Ø50','Couronnes Ø82','Couronnes Ø102','Couronnes Ø152','Couronnes Ø202','Câble diamanté WS','Autre'];
+
+// ════════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════════
+function load(k,d){try{return JSON.parse(localStorage.getItem(k))||d}catch{return d}}
+function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function initConsos(){return CONSO_TYPES.map(t=>({type:t,depot:0,sorti:0}))}
+
+let machines  = load('cbc_machines',[]);
+let mouvements= load('cbc_mouvements',[]);
+let consos    = load('cbc_consos',initConsos());
+
+function saveMachines(){save('cbc_machines',machines)}
+function saveMouvements(){save('cbc_mouvements',mouvements)}
+function saveConsos(){save('cbc_consos',consos)}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+function today(){return new Date().toISOString().slice(0,10)}
+function genNumInterne(modele){
+  const nums=machines.filter(m=>m.modele===modele).map(m=>parseInt(m.numInterne.split('-').pop())||0);
+  const next=nums.length?Math.max(...nums)+1:1;
+  return `${modele}-${String(next).padStart(2,'0')}`;
+}
+
+// Localisation d'une machine
+function getMachineLocation(num){
+  const mvts=mouvements.filter(m=>m.machines&&m.machines.includes(num)).sort((a,b)=>b.ts-a.ts);
+  if(!mvts.length) return{where:'depot',chef:null,date:null};
+  const last=mvts[0];
+  if(last.type==='RETOUR') return{where:'depot',chef:null,date:null};
+  if(last.type==='SORTIE') return{where:'chantier',chef:last.chef,date:last.date};
+  if(last.type==='TRANSFERT') return{where:'chantier',chef:last.to,date:last.date};
+  return{where:'depot',chef:null,date:null};
+}
+
+function daysSince(d){return d?Math.floor((new Date()-new Date(d))/86400000):null}
+
+// Dernières machines utilisées par un chef (5 max, au dépôt actuellement)
+function getLastMachinesByChef(chef){
+  const used=[];
+  const sorted=[...mouvements].filter(m=>m.chef===chef&&m.machines&&m.type==='SORTIE').sort((a,b)=>b.ts-a.ts);
+  for(const mv of sorted){
+    for(const num of mv.machines){
+      if(!used.includes(num)) used.push(num);
+      if(used.length>=8) break;
+    }
+    if(used.length>=8) break;
+  }
+  // Filtrer ceux qui sont au dépôt
+  return used.filter(num=>{
+    const m=machines.find(x=>x.numInterne===num);
+    if(!m||m.etat==='Réformé') return false;
+    return getMachineLocation(num).where==='depot';
+  });
+}
+
+// Calcul alertes
+function getAlertes(){
+  const a=[];
+  machines.forEach(m=>{
+    const loc=getMachineLocation(m.numInterne);
+    if(loc.where==='chantier'&&loc.date){
+      const d=daysSince(loc.date);
+      if(d>SEUIL_ALERTE_JOURS) a.push({type:'long',machine:m.numInterne,chef:loc.chef,days:d});
+    }
+    if(m.etat==='En panne'||m.etat==='En réparation') a.push({type:'panne',machine:m.numInterne,etat:m.etat});
+  });
+  return a;
+}
+
+function updateAlerteBadge(){
+  const a=getAlertes();
+  const badge=document.getElementById('alerte-badge');
+  const count=document.getElementById('alerte-count');
+  if(a.length){
+    badge.style.display='inline-block';
+    count.textContent=a.length;
+  } else {
+    badge.style.display='none';
+  }
+}
+
+function goToAlertes(){
+  if(currentRole==='depot') showPage('matin');
+  else{showPage('direction');showDirTab('alertes');}
+}
+
+// ════════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════════
+let currentRole=null;
+
+function loginDepot(){currentRole='depot';applyLogin();}
+function openPinModal(){
+  document.getElementById('pin-modal').classList.add('open');
+  document.getElementById('pin-input').value='';
+  document.getElementById('pin-err').textContent='';
+  setTimeout(()=>document.getElementById('pin-input').focus(),100);
+}
+function closePinModal(){document.getElementById('pin-modal').classList.remove('open')}
+function checkPin(){
+  const v=document.getElementById('pin-input').value;
+  if(v.length===4){
+    if(v===PIN_DIRECTION){closePinModal();currentRole='direction';applyLogin();}
+    else{document.getElementById('pin-err').textContent='Code incorrect';document.getElementById('pin-input').value='';}
+  }
+}
+
+function applyLogin(){
+  const badge=document.getElementById('role-badge');
+  document.getElementById('btn-logout').style.display='inline-block';
+  document.getElementById('nav-login').style.display='none';
+  document.getElementById('header-search-wrap').style.display='block';
+  updateAlerteBadge();
+
+  if(currentRole==='depot'){
+    badge.textContent='🏭 Dépôt'; badge.className='role-badge depot';
+    document.getElementById('nav-matin').style.display='inline-block';
+    document.getElementById('nav-depot').style.display='inline-block';
+    document.getElementById('nav-inventaire').style.display='inline-block';
+    document.getElementById('nav-personnel').style.display='inline-block';
+    document.getElementById('nav-direction').style.display='none';
+    initDepotSelects();
+    showPage('matin');
+    renderMatinPage();
+  } else {
+    badge.textContent='📊 Direction'; badge.className='role-badge direction';
+    document.getElementById('nav-matin').style.display='none';
+    document.getElementById('nav-depot').style.display='none';
+    document.getElementById('nav-inventaire').style.display='none';
+    document.getElementById('nav-direction').style.display='inline-block';
+    showPage('direction');
+    renderDirection();
+  }
+}
+
+function logout(){
+  currentRole=null;
+  ['nav-matin','nav-depot','nav-inventaire','nav-personnel','nav-direction'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('nav-login').style.display='inline-block';
+  document.getElementById('btn-logout').style.display='none';
+  document.getElementById('role-badge').textContent='Non connecté';
+  document.getElementById('role-badge').className='role-badge';
+  document.getElementById('header-search-wrap').style.display='none';
+  document.getElementById('alerte-badge').style.display='none';
+  showPage('login');
+}
+
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const nb=document.getElementById('nav-'+name);
+  if(nb) nb.classList.add('active');
+  if(name==='inventaire') renderInventaire();
+  if(name==='direction') renderDirection();
+  if(name==='matin') renderMatinPage();
+}
+
+// ════════════════════════════════════════════════════════════
+// RECHERCHE GLOBALE
+// ════════════════════════════════════════════════════════════
+function globalSearch(q){
+  const res=document.getElementById('search-results');
+  q=q.trim().toUpperCase();
+  if(!q){res.style.display='none';return;}
+  const matches=machines.filter(m=>
+    m.numInterne.includes(q)||m.modele.toUpperCase().includes(q)||(m.numFournisseur||'').toUpperCase().includes(q)
+  ).slice(0,8);
+  if(!matches.length){res.style.display='none';return;}
+  res.innerHTML=matches.map(m=>{
+    const loc=getMachineLocation(m.numInterne);
+    const days=loc.where==='chantier'&&loc.date?daysSince(loc.date):null;
+    const locHtml=loc.where==='depot'
+      ?'<span class="badge badge-green">Dépôt</span>'
+      :`<span class="badge badge-orange">Chantier</span> <span style="color:var(--muted);font-size:12px">${loc.chef||''}</span>${days!==null?`<span class="sri-days ${days>SEUIL_ALERTE_JOURS?'text-accent':''}">${days}j</span>`:''}`;
+    return `<div class="search-result-item">
+      <div><span class="sri-num">${m.numInterne}</span><span class="sri-model">${m.modele}</span> ${etatBadge(m.etat)}</div>
+      <div class="sri-loc">${locHtml}</div>
+    </div>`;
+  }).join('');
+  res.style.display='block';
+}
+
+// ════════════════════════════════════════════════════════════
+// PAGE MATIN
+// ════════════════════════════════════════════════════════════
+let departBuffer=[];
+let departFamille=null;
+let departModele=null;
+let saisieManuelleActive=false;
+
+function toggleSaisieManuelle(){
+  saisieManuelleActive=!saisieManuelleActive;
+  document.getElementById('saisie-manuelle-wrap').style.display=saisieManuelleActive?'block':'none';
+  document.getElementById('depart-chef').disabled=saisieManuelleActive;
+  document.getElementById('btn-manuel').textContent=saisieManuelleActive?'← Liste':'✏️ Autre nom';
+  if(saisieManuelleActive){
+    document.getElementById('depart-chef-manuel').focus();
+  }
+  onDepartChefChange();
+}
+
+function getDepartChef(){
+  if(saisieManuelleActive){
+    return document.getElementById('depart-chef-manuel').value.trim();
+  }
+  return document.getElementById('depart-chef').value;
+}
+
+function onDepartChefManuelChange(){
+  // Recharger suggestions avec le nom saisi
+  onDepartChefChange();
+}
+
+function onDepartChefChange(){
+  const chef=getDepartChef();
+  departBuffer=[];
+  departFamille=null;
+  departModele=null;
+  renderDepartChips();
+  // Réinitialiser sélection famille
+  document.querySelectorAll('.famille-btn-inline').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('depart-modeles-wrap').style.display='none';
+  document.getElementById('depart-machines-dispo').style.display='none';
+  // Suggestions historique
+  if(!chef){document.getElementById('depart-suggestion-wrap').style.display='none';return;}
+  const suggestions=getLastMachinesByChef(chef);
+  const wrap=document.getElementById('depart-suggestion-wrap');
+  const cont=document.getElementById('depart-suggestions');
+  if(suggestions.length){
+    wrap.style.display='block';
+    cont.innerHTML=suggestions.map(num=>{
+      const m=machines.find(x=>x.numInterne===num);
+      return `<span class="suggestion-chip" id="sc-${num}" onclick="toggleSuggestion('${num}')">${num}${m?` <span style="color:var(--muted);font-size:10px">${m.modele}</span>`:''}</span>`;
+    }).join('');
+  } else {
+    wrap.style.display='none';
+  }
+}
+
+function selectDepartFamille(famille){
+  departFamille=famille;
+  departModele=null;
+  // Boutons famille
+  document.querySelectorAll('.famille-btn-inline').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('fbtn-'+famille).classList.add('selected');
+  // Afficher modèles
+  const modeles=MODELES_BY_CAT[famille]||[];
+  const wrap=document.getElementById('depart-modeles-wrap');
+  const cont=document.getElementById('depart-modele-buttons');
+  wrap.style.display='block';
+  cont.innerHTML=modeles.map(m=>
+    `<button class="modele-btn" id="dmbtn-${m}" onclick="selectDepartModele('${m}')">${m}</button>`
+  ).join('');
+  // Si un seul modèle, sélectionner auto
+  if(modeles.length===1) selectDepartModele(modeles[0]);
+  document.getElementById('depart-machines-dispo').style.display='none';
+}
+
+function selectDepartModele(modele){
+  departModele=modele;
+  document.querySelectorAll('.modele-btn').forEach(b=>b.classList.remove('selected'));
+  const btn=document.getElementById('dmbtn-'+modele);
+  if(btn) btn.classList.add('selected');
+  // Afficher machines disponibles de ce modèle au dépôt
+  const dispo=machines.filter(m=>m.modele===modele&&m.etat==='Actif'&&getMachineLocation(m.numInterne).where==='depot');
+  const cont=document.getElementById('depart-dispo-chips');
+  const wrap=document.getElementById('depart-machines-dispo');
+  if(dispo.length){
+    wrap.style.display='block';
+    cont.innerHTML=dispo.map(m=>
+      `<span class="suggestion-chip ${departBuffer.includes(m.numInterne)?'used':''}" id="dispo-${m.numInterne}" onclick="toggleDispoChip('${m.numInterne}')">${m.numInterne}</span>`
+    ).join('');
+  } else {
+    cont.innerHTML='<span style="color:var(--muted);font-size:12px">Aucun ${modele} disponible au dépôt</span>';
+    wrap.style.display='block';
+  }
+}
+
+function toggleDispoChip(num){
+  const chip=document.getElementById('dispo-'+num);
+  if(departBuffer.includes(num)){
+    departBuffer=departBuffer.filter(n=>n!==num);
+    if(chip) chip.classList.remove('used');
+  } else {
+    departBuffer.push(num);
+    if(chip) chip.classList.add('used');
+  }
+  renderDepartChips();
+}
+
+function toggleSuggestion(num){
+  const chip=document.getElementById('sc-'+num);
+  if(departBuffer.includes(num)){
+    departBuffer=departBuffer.filter(n=>n!==num);
+    if(chip) chip.classList.remove('used');
+  } else {
+    departBuffer.push(num);
+    if(chip) chip.classList.add('used');
+  }
+  renderDepartChips();
+}
+
+function addDepart(){
+  const raw=document.getElementById('depart-num').value;
+  const nums=raw.split(/[\s,;]+/).map(n=>n.trim().toUpperCase()).filter(Boolean);
+  let ok=0,err=[];
+  nums.forEach(num=>{
+    const m=machines.find(x=>x.numInterne===num);
+    if(!m){err.push(num+' (introuvable)');return;}
+    const loc=getMachineLocation(num);
+    if(loc.where!=='depot'){err.push(num+' (déjà en chantier)');return;}
+    if(departBuffer.includes(num)){err.push(num+' (déjà ajouté)');return;}
+    departBuffer.push(num);ok++;
+    const sc=document.getElementById('sc-'+num);
+    if(sc) sc.classList.add('used');
+    const dc=document.getElementById('dispo-'+num);
+    if(dc) dc.classList.add('used');
+  });
+  document.getElementById('depart-num').value='';
+  renderDepartChips();
+  if(err.length) showToast('⚠ '+err.join(', '),'red');
+  else if(ok) document.getElementById('depart-num').focus();
+}
+
+function renderDepartChips(){
+  document.getElementById('depart-chips').innerHTML=departBuffer.map(n=>{
+    const m=machines.find(x=>x.numInterne===n);
+    return `<div class="chip"><span class="mono">${n}</span>${m?`<span style="color:var(--muted);font-size:11px">${m.modele}</span>`:''}<span class="rm" onclick="removeDepartChip('${n}')">✕</span></div>`;
+  }).join('');
+}
+
+function removeDepartChip(num){
+  departBuffer=departBuffer.filter(n=>n!==num);
+  renderDepartChips();
+  const sc=document.getElementById('sc-'+num);
+  if(sc) sc.classList.remove('used');
+  const dc=document.getElementById('dispo-'+num);
+  if(dc) dc.classList.remove('used');
+}
+
+function validerDepart(){
+  const chef=getDepartChef();
+  if(!chef){showToast('Sélectionnez ou saisissez un intervenant','red');return;}
+  if(!departBuffer.length){showToast('Ajoutez au moins une machine','red');return;}
+  const date=document.getElementById('depart-date').value;
+  mouvements.push({id:genId(),type:'SORTIE',date,chef,machines:[...departBuffer],ts:Date.now()});
+  saveMouvements();
+  showToast(`✓ Départ enregistré — ${departBuffer.length} machine(s) pour ${chef.split(' ')[0]}`);
+  departBuffer=[];departFamille=null;departModele=null;
+  renderDepartChips();
+  onDepartChefChange();
+  // Réinitialiser famille/modèle visuellement
+  document.querySelectorAll('.famille-btn-inline').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('depart-modeles-wrap').style.display='none';
+  document.getElementById('depart-machines-dispo').style.display='none';
+  updateAlerteBadge();
+  renderMatinAlertes();
+}
+
+let maRetourBuffer=[];
+
+function renderMatinPage(){
+  // Date label
+  const opts={weekday:'long',day:'numeric',month:'long'};
+  document.getElementById('matin-date-label').textContent=new Date().toLocaleDateString('fr-FR',opts);
+
+  // Peupler selects
+  populateSelect('depart-chef',CHEFS);
+  populateSelect('matin-retour-chef',CHEFS);
+  document.getElementById('depart-date').value=today();
+  document.getElementById('matin-retour-date').value=today();
+
+  // Alertes matin
+  renderMatinAlertes();
+  renderTerrain();
+  renderRetoursJour();
+  onDepartChefChange();
+  loadMatinRetourMachines();
+}
+
+function showMatinTab(tab){
+  ['depart','terrain','retours'].forEach(t=>{
+    document.getElementById('matin-tab-'+t).style.display=t===tab?'block':'none';
+  });
+  document.querySelectorAll('#page-matin .tab').forEach((b,i)=>{
+    b.classList.toggle('active',['depart','terrain','retours'][i]===tab);
+  });
+  if(tab==='terrain') renderTerrain();
+  if(tab==='retours'){renderRetoursJour();loadMatinRetourMachines();}
+}
+
+function renderMatinAlertes(){
+  const alertes=getAlertes();
+  const cont=document.getElementById('matin-alertes');
+  if(!alertes.length){cont.innerHTML='';return;}
+  const longues=alertes.filter(a=>a.type==='long');
+  const pannes=alertes.filter(a=>a.type==='panne');
+  let html='';
+  if(longues.length) html+=`<div class="alerte-inline orange">⏱ <strong>${longues.length} machine${longues.length>1?'s':''}</strong> en chantier depuis plus de ${SEUIL_ALERTE_JOURS} jours — <span style="font-size:12px;color:var(--muted)">${longues.map(a=>a.machine).join(', ')}</span></div>`;
+  if(pannes.length) html+=`<div class="alerte-inline red">⚠️ <strong>${pannes.length} machine${pannes.length>1?'s':''}</strong> hors service — <span style="font-size:12px;color:var(--muted)">${pannes.map(a=>a.machine).join(', ')}</span></div>`;
+  cont.innerHTML=html;
+}
+
+// ── TERRAIN ──
+function renderTerrain(){
+  const chefsAvec=CHEFS.map(chef=>{
+    const mes=machines.filter(m=>{
+      const loc=getMachineLocation(m.numInterne);
+      return loc.where==='chantier'&&loc.chef===chef;
+    });
+    return{chef,mes};
+  }).filter(c=>c.mes.length>0).sort((a,b)=>b.mes.length-a.mes.length);
+
+  const cont=document.getElementById('terrain-content');
+  if(!chefsAvec.length){
+    cont.innerHTML='<div class="empty"><div class="icon">✅</div>Aucune machine en chantier</div>';
+    return;
+  }
+  cont.innerHTML=`
+    <div class="matin-grid">
+      ${chefsAvec.map(({chef,mes})=>{
+        const alertes=mes.filter(m=>{
+          const loc=getMachineLocation(m.numInterne);
+          return loc.date&&daysSince(loc.date)>SEUIL_ALERTE_JOURS;
+        });
+        return `<div class="matin-card">
+          <div class="chef-name">${chef}</div>
+          <span class="badge badge-orange">${mes.length} machine${mes.length>1?'s':''}</span>
+          ${alertes.length?`<span class="badge badge-red" style="margin-left:6px">⏱ ${alertes.length} alerte${alertes.length>1?'s':''}</span>`:''}
+          <div class="chef-machines">
+            ${mes.map(m=>{
+              const loc=getMachineLocation(m.numInterne);
+              const d=loc.date?daysSince(loc.date):null;
+              return `<span class="badge ${d>SEUIL_ALERTE_JOURS?'badge-red':'badge-blue'} mono" title="${d!==null?d+'j':''}">${m.numInterne}</span>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ── RETOURS DU JOUR ──
+function loadMatinRetourMachines(){
+  const chef=document.getElementById('matin-retour-chef')?.value;
+  if(!chef) return;
+  const enChantier=machines.filter(m=>{
+    const loc=getMachineLocation(m.numInterne);
+    return loc.where==='chantier'&&loc.chef===chef;
+  });
+  const cont=document.getElementById('matin-retour-list');
+  maRetourBuffer=[];
+  if(!enChantier.length){
+    cont.innerHTML='<p class="text-muted" style="font-size:13px">Aucune machine en chantier pour ce chef.</p>';
+    return;
+  }
+  cont.innerHTML=`<p style="font-size:12px;color:var(--muted);margin-bottom:8px">${enChantier.length} machine(s) — cochez celles qui rentrent :</p>
+    ${enChantier.map(m=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:6px;margin-bottom:6px;cursor:pointer">
+        <input type="checkbox" value="${m.numInterne}" onchange="toggleMaRetour('${m.numInterne}',this.checked)">
+        <span class="mono text-accent fw600">${m.numInterne}</span>
+        <span style="color:var(--muted)">${m.modele}</span>
+      </label>`).join('')}
+    <button class="btn btn-secondary btn-sm" style="margin-top:4px" onclick="selectAllMaRetour(${JSON.stringify(enChantier.map(m=>m.numInterne))})">Tout sélectionner</button>`;
+}
+
+function toggleMaRetour(num,checked){
+  if(checked) maRetourBuffer.push(num);
+  else maRetourBuffer=maRetourBuffer.filter(n=>n!==num);
+}
+function selectAllMaRetour(nums){
+  maRetourBuffer=[...nums];
+  document.querySelectorAll('#matin-retour-list input[type=checkbox]').forEach(cb=>cb.checked=true);
+}
+
+function validerMatinRetour(){
+  if(!maRetourBuffer.length){showToast('Sélectionnez au moins une machine','red');return;}
+  const chef=document.getElementById('matin-retour-chef').value;
+  const date=document.getElementById('matin-retour-date').value;
+  const etat=document.getElementById('matin-retour-etat').value;
+  if(etat!=='OK'){
+    maRetourBuffer.forEach(num=>{
+      const m=machines.find(x=>x.numInterne===num);
+      if(m) m.etat=etat==='PANNE'?'En panne':'En réparation';
+    });
+    saveMachines();
+  }
+  mouvements.push({id:genId(),type:'RETOUR',date,chef,machines:[...maRetourBuffer],etat,ts:Date.now()});
+  saveMouvements();
+  showToast(`✓ Retour enregistré — ${maRetourBuffer.length} machine(s)`);
+  maRetourBuffer=[];
+  loadMatinRetourMachines();
+  renderRetoursJour();
+  renderTerrain();
+  updateAlerteBadge();
+}
+
+function renderRetoursJour(){
+  const t=today();
+  const retours=mouvements.filter(m=>m.type==='RETOUR'&&m.date===t).sort((a,b)=>b.ts-a.ts);
+  const cont=document.getElementById('retours-jour-list');
+  if(!retours.length){cont.innerHTML='<div class="empty"><div class="icon">📭</div>Aucun retour enregistré aujourd\'hui</div>';return;}
+  cont.innerHTML=`<div class="card"><h3>Retours enregistrés aujourd'hui</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Chef</th><th>Machines</th><th>État</th></tr></thead>
+      <tbody>${retours.map(r=>`<tr>
+        <td>${r.chef}</td>
+        <td>${(r.machines||[]).map(n=>`<span class="mono badge badge-green">${n}</span>`).join(' ')}</td>
+        <td>${r.etat==='OK'?'✅ OK':r.etat==='PANNE'?'⚠️ Panne':'🔧 Réparation'}</td>
+      </tr>`).join('')}
+      </tbody>
+    </table></div></div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// PAGE DÉPÔT (onglets classiques)
+// ════════════════════════════════════════════════════════════
+function initDepotSelects(){
+  ['sortie-chef','retour-chef','transf-from','transf-to','conso-chef'].forEach(id=>{
+    populateSelect(id,CHEFS);
+  });
+  ['sortie-date','retour-date','transf-date'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value=today();
+  });
+  renderConsos();
+}
+
+function populateSelect(id,list){
+  const sel=document.getElementById(id);
+  if(!sel) return;
+  sel.innerHTML=list.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+function showDepotTab(tab){
+  ['sortie','retour','transfert','consommables'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===tab?'block':'none';
+  });
+  document.querySelectorAll('#page-depot .tab').forEach((b,i)=>{
+    b.classList.toggle('active',['sortie','retour','transfert','consommables'][i]===tab);
+  });
+  if(tab==='retour') loadChefMachines();
+  if(tab==='transfert') loadTransfMachines();
+  if(tab==='sortie') loadSortiesuggestions();
+}
+
+// ── SORTIE avec suggestions ──
+let sortieBuffer=[];
+
+function loadSortiesuggestions(){
+  const chef=document.getElementById('sortie-chef').value;
+  const suggestions=getLastMachinesByChef(chef);
+  const wrap=document.getElementById('sortie-suggestion-wrap');
+  const cont=document.getElementById('sortie-suggestions');
+  if(suggestions.length){
+    wrap.style.display='block';
+    cont.innerHTML=suggestions.map(num=>{
+      const m=machines.find(x=>x.numInterne===num);
+      return `<span class="suggestion-chip" id="ss-${num}" onclick="toggleSortieSuggestion('${num}')">${num}${m?` <span style="color:var(--muted);font-size:10px">${m.modele}</span>`:''}</span>`;
+    }).join('');
+  } else wrap.style.display='none';
+}
+
+function toggleSortieSuggestion(num){
+  const chip=document.getElementById('ss-'+num);
+  if(sortieBuffer.includes(num)){
+    sortieBuffer=sortieBuffer.filter(n=>n!==num);
+    chip.classList.remove('used');
+  } else {
+    sortieBuffer.push(num);
+    chip.classList.add('used');
+  }
+  renderSortieChips();
+}
+
+function addToSortie(){
+  const raw=document.getElementById('sortie-num').value;
+  const nums=raw.split(/[\s,;]+/).map(n=>n.trim().toUpperCase()).filter(Boolean);
+  let errs=[];
+  nums.forEach(num=>{
+    if(!machines.find(m=>m.numInterne===num)){errs.push(num+' introuvable');return;}
+    if(getMachineLocation(num).where!=='depot'){errs.push(num+' déjà en chantier');return;}
+    if(sortieBuffer.includes(num)){errs.push(num+' déjà ajouté');return;}
+    sortieBuffer.push(num);
+    const ss=document.getElementById('ss-'+num);
+    if(ss) ss.classList.add('used');
+  });
+  document.getElementById('sortie-num').value='';
+  renderSortieChips();
+  if(errs.length) showToast('⚠ '+errs.join(', '),'red');
+  else document.getElementById('sortie-num').focus();
+}
+
+function renderSortieChips(){
+  document.getElementById('sortie-chips').innerHTML=sortieBuffer.map(n=>
+    `<div class="chip"><span class="mono">${n}</span><span class="rm" onclick="removeSortie('${n}')">✕</span></div>`
+  ).join('');
+}
+function removeSortie(num){
+  sortieBuffer=sortieBuffer.filter(n=>n!==num);
+  renderSortieChips();
+  const ss=document.getElementById('ss-'+num);
+  if(ss) ss.classList.remove('used');
+}
+
+function validerSortie(){
+  if(!sortieBuffer.length){showToast('Ajoutez au moins une machine','red');return;}
+  const chef=document.getElementById('sortie-chef').value;
+  const date=document.getElementById('sortie-date').value;
+  mouvements.push({id:genId(),type:'SORTIE',date,chef,machines:[...sortieBuffer],ts:Date.now()});
+  saveMouvements();
+  showToast(`✓ Sortie enregistrée — ${sortieBuffer.length} machine(s)`);
+  sortieBuffer=[];
+  renderSortieChips();
+  loadSortiesuggestions();
+  updateAlerteBadge();
+}
+
+// ── RETOUR ──
+let retourBuffer=[];
+
+function loadChefMachines(){
+  const chef=document.getElementById('retour-chef')?.value;
+  if(!chef) return;
+  const enChantier=machines.filter(m=>getMachineLocation(m.numInterne).chef===chef&&getMachineLocation(m.numInterne).where==='chantier');
+  const cont=document.getElementById('chef-machines-list');
+  retourBuffer=[];
+  if(!enChantier.length){cont.innerHTML='<p class="text-muted" style="font-size:13px">Aucune machine en chantier.</p>';return;}
+  cont.innerHTML=`<p style="font-size:12px;color:var(--muted);margin-bottom:8px">${enChantier.length} machine(s) — cochez celles qui rentrent :</p>
+    ${enChantier.map(m=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:6px;margin-bottom:6px;cursor:pointer">
+        <input type="checkbox" value="${m.numInterne}" onchange="toggleRetour('${m.numInterne}',this.checked)">
+        <span class="mono text-accent fw600">${m.numInterne}</span>
+        <span style="color:var(--muted)">${m.modele}</span>
+      </label>`).join('')}
+    <button class="btn btn-secondary btn-sm" style="margin-top:4px" onclick="selectAllRetour(${JSON.stringify(enChantier.map(m=>m.numInterne))})">Tout sélectionner</button>`;
+}
+
+function toggleRetour(num,checked){if(checked)retourBuffer.push(num);else retourBuffer=retourBuffer.filter(n=>n!==num);}
+function selectAllRetour(nums){retourBuffer=[...nums];document.querySelectorAll('#chef-machines-list input[type=checkbox]').forEach(cb=>cb.checked=true);}
+
+function validerRetour(){
+  if(!retourBuffer.length){showToast('Sélectionnez au moins une machine','red');return;}
+  const chef=document.getElementById('retour-chef').value;
+  const date=document.getElementById('retour-date').value;
+  const etat=document.getElementById('retour-etat').value;
+  if(etat!=='OK'){
+    retourBuffer.forEach(num=>{const m=machines.find(x=>x.numInterne===num);if(m)m.etat=etat==='PANNE'?'En panne':'En réparation';});
+    saveMachines();
+  }
+  mouvements.push({id:genId(),type:'RETOUR',date,chef,machines:[...retourBuffer],etat,ts:Date.now()});
+  saveMouvements();
+  showToast(`✓ Retour enregistré — ${retourBuffer.length} machine(s)`);
+  retourBuffer=[];
+  loadChefMachines();
+  updateAlerteBadge();
+}
+
+// ── TRANSFERT ──
+let transfBuffer=[];
+
+function loadTransfMachines(){
+  const chef=document.getElementById('transf-from')?.value;
+  if(!chef) return;
+  const enChantier=machines.filter(m=>getMachineLocation(m.numInterne).chef===chef&&getMachineLocation(m.numInterne).where==='chantier');
+  const cont=document.getElementById('transf-machines-list');
+  transfBuffer=[];
+  if(!enChantier.length){cont.innerHTML='<p class="text-muted" style="font-size:13px">Aucune machine chez ce chef.</p>';return;}
+  cont.innerHTML=`<p style="font-size:12px;color:var(--muted);margin-bottom:8px">Cochez les machines à transférer :</p>
+    ${enChantier.map(m=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:6px;margin-bottom:6px;cursor:pointer">
+        <input type="checkbox" value="${m.numInterne}" onchange="toggleTransf('${m.numInterne}',this.checked)">
+        <span class="mono text-accent fw600">${m.numInterne}</span>
+        <span style="color:var(--muted)">${m.modele}</span>
+      </label>`).join('')}`;
+}
+
+function toggleTransf(num,checked){if(checked)transfBuffer.push(num);else transfBuffer=transfBuffer.filter(n=>n!==num);}
+
+function validerTransfert(){
+  if(!transfBuffer.length){showToast('Sélectionnez au moins une machine','red');return;}
+  const from=document.getElementById('transf-from').value;
+  const to=document.getElementById('transf-to').value;
+  const date=document.getElementById('transf-date').value;
+  const motif=document.getElementById('transf-motif').value;
+  if(from===to){showToast('Chef source et destination identiques','red');return;}
+  mouvements.push({id:genId(),type:'TRANSFERT',date,chef:from,to,machines:[...transfBuffer],motif,ts:Date.now()});
+  saveMouvements();
+  showToast(`✓ Transfert enregistré — ${transfBuffer.length} machine(s) → ${to.split(' ')[0]}`);
+  transfBuffer=[];
+  loadTransfMachines();
+}
+
+// ── CONSOMMABLES ──
+function validerConso(){
+  const type=document.getElementById('conso-type').value;
+  const op=document.getElementById('conso-op').value;
+  const qty=parseInt(document.getElementById('conso-qty').value)||0;
+  const chef=document.getElementById('conso-chef').value;
+  if(!qty) return;
+  const conso=consos.find(c=>c.type===type);
+  if(!conso) return;
+  if(op==='entree'){conso.depot+=qty;}
+  else if(op==='sortie'){
+    if(conso.depot<qty){showToast('Stock insuffisant','red');return;}
+    conso.depot-=qty;conso.sorti+=qty;
+    mouvements.push({id:genId(),type:'CONSO_SORTIE',date:today(),chef,conso:type,qty,ts:Date.now()});
+    saveMouvements();
+  } else if(op==='perte'){conso.sorti=Math.max(0,conso.sorti-qty);conso.depot=Math.max(0,conso.depot-qty);}
+  saveConsos();renderConsos();showToast('✓ Consommable enregistré');
+}
+
+function renderConsos(){
+  const tbody=document.getElementById('conso-tbody');
+  if(!tbody) return;
+  tbody.innerHTML=consos.map(c=>`<tr>
+    <td>${c.type}</td>
+    <td><span class="badge ${c.depot>0?'badge-green':'badge-red'}">${c.depot}</span></td>
+    <td><span class="badge badge-orange">${c.sorti}</span></td>
+    <td class="mono">${c.depot+c.sorti}</td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// PAGE INVENTAIRE
+// ════════════════════════════════════════════════════════════
+let currentFamille=null,currentModele=null;
+
+function openAddMachine(){
+  currentFamille=null;currentModele=null;
+  ['m-num-four','m-num-int','m-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('step-famille').style.display='block';
+  document.getElementById('step-modele').style.display='none';
+  document.getElementById('modal-machine').classList.add('open');
+}
+
+function selectFamille(f){
+  currentFamille=f;currentModele=null;
+  document.getElementById('famille-label').textContent=f;
+  document.getElementById('step-famille').style.display='none';
+  document.getElementById('step-modele').style.display='block';
+  const modeles=MODELES_BY_CAT[f]||[];
+  document.getElementById('modele-buttons').innerHTML=modeles.map(m=>
+    `<button class="modele-btn" onclick="selectModele('${m}')" id="mbtn-${m}">${m}</button>`
+  ).join('');
+  if(modeles.length===1) selectModele(modeles[0]);
+}
+
+function selectModele(modele){
+  currentModele=modele;
+  document.querySelectorAll('.modele-btn').forEach(b=>b.classList.remove('selected'));
+  const btn=document.getElementById('mbtn-'+modele);
+  if(btn) btn.classList.add('selected');
+  document.getElementById('m-num-int').value=genNumInterne(modele);
+}
+
+function backToFamille(){
+  document.getElementById('step-famille').style.display='block';
+  document.getElementById('step-modele').style.display='none';
+}
+
+function saveMachine(){
+  if(!currentModele){showToast('Sélectionnez un modèle','red');return;}
+  const numInt=document.getElementById('m-num-int').value.trim().toUpperCase();
+  const numFour=document.getElementById('m-num-four').value.trim();
+  const etat=document.getElementById('m-etat').value;
+  const notes=document.getElementById('m-notes').value;
+  if(!numInt){showToast('N° interne requis','red');return;}
+  if(machines.find(m=>m.numInterne===numInt)){showToast('Ce N° interne existe déjà','red');return;}
+  const sousFamille=SCIE_SOUS_FAMILLE[currentModele]||currentFamille;
+  machines.push({id:genId(),numInterne:numInt,numFournisseur:numFour,famille:currentFamille,sousFamille,categorie:sousFamille,modele:currentModele,etat,notes,createdAt:today()});
+  saveMachines();closeModal('modal-machine');renderInventaire();
+  showToast(`✓ ${currentModele} — ${numInt} ajouté`);
+}
+
+function openEditEtat(id){
+  const m=machines.find(x=>x.id===id);if(!m) return;
+  document.getElementById('edit-machine-id').value=id;
+  document.getElementById('edit-etat').value=m.etat;
+  document.getElementById('edit-notes').value=m.notes||'';
+  document.getElementById('modal-etat').classList.add('open');
+}
+
+function saveEtat(){
+  const id=document.getElementById('edit-machine-id').value;
+  const m=machines.find(x=>x.id===id);if(!m) return;
+  m.etat=document.getElementById('edit-etat').value;
+  m.notes=document.getElementById('edit-notes').value;
+  saveMachines();closeModal('modal-etat');renderInventaire();
+  showToast('✓ État mis à jour');updateAlerteBadge();
+}
+
+function renderInventaire(){
+  const search=(document.getElementById('inv-search')?.value||'').toLowerCase();
+  const filterCat=document.getElementById('inv-filter-cat')?.value||'';
+  const filterEtat=document.getElementById('inv-filter-etat')?.value||'';
+  let list=machines.filter(m=>{
+    const ms=!search||m.numInterne.toLowerCase().includes(search)||m.modele.toLowerCase().includes(search)||(m.numFournisseur||'').toLowerCase().includes(search);
+    const mc=!filterCat||m.famille===filterCat||m.sousFamille===filterCat||m.categorie===filterCat;
+    const me=!filterEtat||m.etat===filterEtat;
+    return ms&&mc&&me;
+  }).sort((a,b)=>a.numInterne.localeCompare(b.numInterne));
+  const tbody=document.getElementById('inventaire-tbody');
+  if(!list.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty"><div class="icon">📦</div>Aucune machine</div></td></tr>';return;}
+  tbody.innerHTML=list.map(m=>{
+    const loc=getMachineLocation(m.numInterne);
+    return `<tr>
+      <td class="mono fw600 text-accent">${m.numInterne}</td>
+      <td class="mono text-muted">${m.numFournisseur||'—'}</td>
+      <td>${m.famille||m.categorie}</td>
+      <td class="mono fw600">${m.modele}</td>
+      <td>${etatBadge(m.etat)}</td>
+      <td>${loc.where==='depot'?'<span class="badge badge-green">Dépôt</span>':`<span class="badge badge-orange">Chantier</span><br><span style="font-size:11px;color:var(--muted)">${loc.chef?.split(' ')[0]||''}</span>`}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="openEditEtat('${m.id}')">État</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function etatBadge(etat){
+  const map={'Actif':'badge-green','En panne':'badge-red','En réparation':'badge-yellow','Réformé':'badge-gray'};
+  return `<span class="badge ${map[etat]||'badge-gray'}">${etat}</span>`;
+}
+
+// ════════════════════════════════════════════════════════════
+// PAGE DIRECTION
+// ════════════════════════════════════════════════════════════
+function showDirTab(tab){
+  ['parc','chefs','historique','alertes'].forEach(t=>{
+    document.getElementById('dir-tab-'+t).style.display=t===tab?'block':'none';
+  });
+  document.querySelectorAll('#page-direction .tab').forEach((b,i)=>{
+    b.classList.toggle('active',['parc','chefs','historique','alertes'][i]===tab);
+  });
+  if(tab==='chefs') renderDirChefs();
+  if(tab==='historique') renderHistorique();
+  if(tab==='alertes') renderAlertes();
+  if(tab==='parc') renderDirParc();
+}
+
+function renderDirection(){
+  const total=machines.length;
+  const enChantier=machines.filter(m=>getMachineLocation(m.numInterne).where==='chantier').length;
+  const enPanne=machines.filter(m=>m.etat==='En panne'||m.etat==='En réparation').length;
+  const alertes=getAlertes().length;
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="kpi accent"><div class="val">${total}</div><div class="lbl">Machines total</div></div>
+    <div class="kpi green"><div class="val">${total-enChantier}</div><div class="lbl">Au dépôt</div></div>
+    <div class="kpi blue"><div class="val">${enChantier}</div><div class="lbl">En chantier</div></div>
+    <div class="kpi red"><div class="val">${alertes}</div><div class="lbl">Alertes actives</div></div>`;
+  document.getElementById('last-refresh').textContent='Mis à jour à '+new Date().toLocaleTimeString('fr-FR');
+  const sel=document.getElementById('hist-chef-filter');
+  if(sel){sel.innerHTML='<option value="">Tous les chefs</option>';CHEFS.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});}
+  renderDirParc();
+  updateAlerteBadge();
+}
+
+function renderDirParc(){
+  const search=(document.getElementById('dir-search')?.value||'').toLowerCase();
+  const filterLoc=document.getElementById('dir-filter-loc')?.value||'';
+  let list=machines.filter(m=>{
+    const loc=getMachineLocation(m.numInterne);
+    const ms=!search||m.numInterne.toLowerCase().includes(search)||m.modele.toLowerCase().includes(search)||(loc.chef||'').toLowerCase().includes(search);
+    const ml=!filterLoc||loc.where===filterLoc;
+    return ms&&ml;
+  }).sort((a,b)=>a.numInterne.localeCompare(b.numInterne));
+  const tbody=document.getElementById('dir-parc-tbody');
+  if(!list.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="icon">🔍</div>Aucun résultat</div></td></tr>';return;}
+  tbody.innerHTML=list.map(m=>{
+    const loc=getMachineLocation(m.numInterne);
+    let sortieDate=null;
+    if(loc.where==='chantier'){
+      const mvts=mouvements.filter(mv=>mv.machines?.includes(m.numInterne)&&mv.type!=='RETOUR').sort((a,b)=>new Date(b.date)-new Date(a.date));
+      if(mvts.length) sortieDate=mvts[0].date;
+    }
+    const days=sortieDate?daysSince(sortieDate):null;
+    return `<tr>
+      <td class="mono fw600 text-accent">${m.numInterne}</td>
+      <td>${m.modele}</td>
+      <td>${etatBadge(m.etat)}</td>
+      <td>${loc.where==='depot'?'<span class="badge badge-green">Dépôt</span>':'<span class="badge badge-orange">Chantier</span>'}</td>
+      <td>${loc.chef||'<span class="text-muted">—</span>'}</td>
+      <td class="days-out">${days!==null?`<span class="${days>SEUIL_ALERTE_JOURS?'text-accent':''}">${days}j</span>`:'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDirChefs(){
+  const chefsAvec=CHEFS.map(chef=>{
+    const mes=machines.filter(m=>getMachineLocation(m.numInterne).chef===chef);
+    return{chef,count:mes.length,machines:mes};
+  }).filter(c=>c.count>0).sort((a,b)=>b.count-a.count);
+  const cont=document.getElementById('dir-chefs-content');
+  if(!chefsAvec.length){cont.innerHTML='<div class="empty"><div class="icon">👷</div>Aucune machine en chantier</div>';return;}
+  cont.innerHTML=chefsAvec.map(({chef,machines:ms})=>`
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:10px">
+        <span class="fw600">${chef}</span>
+        <span class="badge badge-orange">${ms.length} machine${ms.length>1?'s':''}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${ms.map(m=>`<span class="badge badge-blue mono">${m.numInterne}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function renderHistorique(){
+  const chefFilter=document.getElementById('hist-chef-filter')?.value||'';
+  const typeFilter=document.getElementById('hist-type-filter')?.value||'';
+  let list=[...mouvements].filter(m=>{
+    const mc=!chefFilter||m.chef===chefFilter||m.to===chefFilter;
+    const mt=!typeFilter||m.type===typeFilter;
+    return mc&&mt;
+  }).sort((a,b)=>b.ts-a.ts).slice(0,100);
+  const tbody=document.getElementById('historique-tbody');
+  if(!list.length){tbody.innerHTML='<tr><td colspan="5"><div class="empty"><div class="icon">📋</div>Aucun mouvement</div></td></tr>';return;}
+  const typeMap={SORTIE:['badge-orange','Sortie'],RETOUR:['badge-green','Retour'],TRANSFERT:['badge-blue','Transfert'],CONSO_SORTIE:['badge-yellow','Consommable']};
+  tbody.innerHTML=list.map(m=>{
+    const[cls,label]=typeMap[m.type]||['badge-gray',m.type];
+    const mach=m.machines?m.machines.map(n=>`<span class="mono" style="font-size:12px">${n}</span>`).join(' '):(m.conso?`${m.conso} ×${m.qty}`:'—');
+    const detail=m.type==='TRANSFERT'?`→ ${m.to}`:(m.motif||m.etat||'');
+    return `<tr>
+      <td class="mono text-muted">${m.date}</td>
+      <td><span class="badge ${cls}">${label}</span></td>
+      <td>${mach}</td>
+      <td>${m.chef}</td>
+      <td style="color:var(--muted);font-size:12px">${detail}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAlertes(){
+  const alertes=getAlertes();
+  const cont=document.getElementById('alertes-content');
+  if(!alertes.length){cont.innerHTML='<div class="empty"><div class="icon">✅</div>Aucune alerte en cours</div>';return;}
+  cont.innerHTML=alertes.map(a=>{
+    if(a.type==='long') return `<div class="alerte-inline orange">⏱ <strong>${a.machine}</strong> en chantier depuis <strong>${a.days} jours</strong> — chez ${a.chef}</div>`;
+    return `<div class="alerte-inline red">⚠️ <strong>${a.machine}</strong> — ${a.etat}</div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+// GESTION PERSONNEL
+// ════════════════════════════════════════════════════════════
+function openModalPersonnel(){
+  renderPersonnelList();
+  document.getElementById('new-personnel-nom').value='';
+  document.getElementById('modal-personnel').classList.add('open');
+}
+
+function renderPersonnelList(){
+  CHEFS = loadPersonnel().sort((a,b)=>a.localeCompare(b,'fr'));
+  document.getElementById('personnel-count').textContent = CHEFS.length;
+  const cont = document.getElementById('personnel-list');
+  if(!CHEFS.length){
+    cont.innerHTML='<div class="empty" style="padding:20px">Aucun intervenant enregistré</div>';
+    return;
+  }
+  cont.innerHTML = CHEFS.map((nom,i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border);${i===CHEFS.length-1?'border-bottom:none':''}">
+      <span style="font-size:13px;font-weight:500">${nom}</span>
+      <button class="btn btn-sm" onclick="deletePersonnel('${nom.replace(/'/g,"\\'")}') "
+        style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2);font-size:11px;padding:3px 10px">
+        ✕ Supprimer
+      </button>
+    </div>
+  `).join('');
+}
+
+function addPersonnel(){
+  const val = document.getElementById('new-personnel-nom').value.trim().toUpperCase();
+  if(!val){ showToast('Saisissez un nom','red'); return; }
+  const list = loadPersonnel();
+  if(list.includes(val)){ showToast('Ce nom existe déjà','red'); return; }
+  list.push(val);
+  savePersonnel(list);
+  CHEFS = list.sort((a,b)=>a.localeCompare(b,'fr'));
+  document.getElementById('new-personnel-nom').value='';
+  renderPersonnelList();
+  refreshAllSelects();
+  showToast(`✓ ${val} ajouté`);
+}
+
+function deletePersonnel(nom){
+  if(!confirm(`Supprimer "${nom}" de la liste ?`)) return;
+  const list = loadPersonnel().filter(n=>n!==nom);
+  savePersonnel(list);
+  CHEFS = list.sort((a,b)=>a.localeCompare(b,'fr'));
+  renderPersonnelList();
+  refreshAllSelects();
+  showToast(`${nom} supprimé`,'red');
+}
+
+function refreshAllSelects(){
+  // Rafraîchir tous les selects qui listent les chefs
+  ['depart-chef','matin-retour-chef','sortie-chef','retour-chef','transf-from','transf-to','conso-chef'].forEach(id=>{
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const prev = sel.value;
+    populateSelect(id, CHEFS);
+    // Essayer de rétablir la valeur précédente
+    if([...sel.options].some(o=>o.value===prev)) sel.value=prev;
+  });
+  // Rafraîchir aussi le filtre historique
+  const hf = document.getElementById('hist-chef-filter');
+  if(hf){
+    const prev = hf.value;
+    hf.innerHTML='<option value="">Tous les chefs</option>';
+    CHEFS.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;hf.appendChild(o);});
+    if([...hf.options].some(o=>o.value===prev)) hf.value=prev;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+
+function showToast(msg,type='green'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=type==='red'?'var(--red)':'var(--green)';
+  t.style.color=type==='red'?'#fff':'#000';
+  t.style.display='block';
+  setTimeout(()=>t.style.display='none',3200);
+}
+</script>
+</body>
+</html>
