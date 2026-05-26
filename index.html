@@ -338,7 +338,30 @@
           <div id="depart-dispo-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
         </div>
 
-        <!-- Ou saisie manuelle numéro -->
+        <!-- Créer une nouvelle machine à la volée -->
+        <div id="depart-new-machine-wrap" style="display:none;margin-top:10px">
+          <div style="background:rgba(249,115,22,.07);border:1px dashed rgba(249,115,22,.4);border-radius:8px;padding:14px">
+            <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:10px">
+              ➕ Enregistrer une nouvelle machine
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+              <div style="flex:1;min-width:140px">
+                <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">N° FOURNISSEUR <span style="color:var(--muted);font-weight:400">(marqué sur la machine)</span></label>
+                <input type="text" id="new-machine-four" placeholder="Ex: 12345-ABC" style="width:100%">
+              </div>
+              <div style="flex:1;min-width:140px">
+                <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">N° INTERNE <span id="new-machine-num-hint" style="color:var(--accent);font-weight:600"></span></label>
+                <input type="text" id="new-machine-num" placeholder="Ex: DD350-01"
+                  oninput="this.value=this.value.toUpperCase();checkNumInterneDepart()"
+                  style="width:100%">
+              </div>
+            </div>
+            <div id="new-machine-err" style="color:var(--red);font-size:12px;min-height:16px;margin-bottom:8px"></div>
+            <button class="btn btn-primary" onclick="creerEtAjouterMachine()">✓ Créer et ajouter au départ</button>
+          </div>
+        </div>
+
+        <!-- Ou saisie manuelle numéro existant -->
         <div style="margin-top:10px">
           <div style="display:flex;gap:8px">
             <input type="text" id="depart-num" placeholder="Ou saisir N° directement : DD350-01 TS10-02 …"
@@ -1083,19 +1106,121 @@ function selectDepartModele(modele){
   document.querySelectorAll('.modele-btn').forEach(b=>b.classList.remove('selected'));
   const btn=document.getElementById('dmbtn-'+modele);
   if(btn) btn.classList.add('selected');
-  // Afficher machines disponibles de ce modèle au dépôt
-  const dispo=machines.filter(m=>m.modele===modele&&m.etat==='Actif'&&getMachineLocation(m.numInterne).where==='depot');
+
+  // Machines de ce modèle disponibles au dépôt (actives)
+  const dispo=machines.filter(m=>
+    m.modele===modele && m.etat==='Actif' && getMachineLocation(m.numInterne).where==='depot'
+  );
+
   const cont=document.getElementById('depart-dispo-chips');
   const wrap=document.getElementById('depart-machines-dispo');
+  const newWrap=document.getElementById('depart-new-machine-wrap');
+
+  // Préparer champ N° interne auto
+  const numAuto=genNumInterne(modele);
+  document.getElementById('new-machine-num').value=numAuto;
+  document.getElementById('new-machine-four').value='';
+  document.getElementById('new-machine-err').textContent='';
+  document.getElementById('new-machine-num-hint').textContent='(auto : '+numAuto+')';
+
   if(dispo.length){
     wrap.style.display='block';
     cont.innerHTML=dispo.map(m=>
       `<span class="suggestion-chip ${departBuffer.includes(m.numInterne)?'used':''}" id="dispo-${m.numInterne}" onclick="toggleDispoChip('${m.numInterne}')">${m.numInterne}</span>`
     ).join('');
+    // Afficher quand même le formulaire création (machine supplémentaire possible)
+    newWrap.style.display='block';
   } else {
-    cont.innerHTML='<span style="color:var(--muted);font-size:12px">Aucun ${modele} disponible au dépôt</span>';
+    // Aucune dispo : cacher liste, montrer directement le formulaire création
     wrap.style.display='block';
+    cont.innerHTML=`<span style="color:var(--muted);font-size:12px;font-style:italic">Aucun <strong>${modele}</strong> enregistré au dépôt — créez-en un ci-dessous</span>`;
+    newWrap.style.display='block';
   }
+}
+
+function checkNumInterneDepart(){
+  const val=document.getElementById('new-machine-num').value.trim().toUpperCase();
+  const err=document.getElementById('new-machine-err');
+  if(!val){err.textContent='';return;}
+  if(machines.find(m=>m.numInterne===val)){
+    err.textContent='⛔ Ce numéro existe déjà dans le parc — choisissez un autre';
+  } else {
+    err.textContent='✓ Numéro disponible';
+    err.style.color='var(--green)';
+    // Reset couleur rouge si besoin
+    setTimeout(()=>{
+      if(document.getElementById('new-machine-err').textContent==='✓ Numéro disponible')
+        document.getElementById('new-machine-err').style.color='var(--green)';
+    },0);
+  }
+  err.style.color=machines.find(m=>m.numInterne===val)?'var(--red)':'var(--green)';
+}
+
+function creerEtAjouterMachine(){
+  if(!departModele){showToast('Sélectionnez un modèle d\'abord','red');return;}
+
+  const numInt=document.getElementById('new-machine-num').value.trim().toUpperCase();
+  const numFour=document.getElementById('new-machine-four').value.trim();
+  const err=document.getElementById('new-machine-err');
+
+  // Validation N° interne
+  if(!numInt){
+    err.textContent='⛔ Le numéro interne est obligatoire';
+    err.style.color='var(--red)';
+    document.getElementById('new-machine-num').focus();
+    return;
+  }
+
+  // Vérification doublon — BLOCAGE STRICT
+  if(machines.find(m=>m.numInterne===numInt)){
+    err.textContent='⛔ Ce numéro existe déjà ! Impossible d\'enregistrer deux machines avec le même numéro.';
+    err.style.color='var(--red)';
+    document.getElementById('new-machine-num').focus();
+    showToast('⛔ N° '+numInt+' déjà existant — doublon interdit','red');
+    return;
+  }
+
+  // Vérifier format cohérent avec le modèle sélectionné
+  const prefixAttendu=departModele+'-';
+  if(!numInt.startsWith(prefixAttendu)){
+    // Avertissement non bloquant — on demande confirmation
+    if(!confirm(`Le numéro "${numInt}" ne commence pas par "${prefixAttendu}".\nContinuer quand même ?`)) return;
+  }
+
+  // Création de la machine dans le parc
+  const sousFamille=SCIE_SOUS_FAMILLE[departModele]||departFamille;
+  const newMachine={
+    id:genId(),
+    numInterne:numInt,
+    numFournisseur:numFour,
+    famille:departFamille,
+    sousFamille,
+    categorie:sousFamille,
+    modele:departModele,
+    etat:'Actif',
+    notes:'Créée depuis départ camion',
+    createdAt:today()
+  };
+  machines.push(newMachine);
+  saveMachines();
+
+  // Ajouter directement au buffer de départ
+  if(!departBuffer.includes(numInt)){
+    departBuffer.push(numInt);
+    renderDepartChips();
+  }
+
+  // Rafraîchir la liste dispo
+  selectDepartModele(departModele);
+
+  // Reset champ
+  document.getElementById('new-machine-four').value='';
+  const nextNum=genNumInterne(departModele);
+  document.getElementById('new-machine-num').value=nextNum;
+  document.getElementById('new-machine-num-hint').textContent='(auto : '+nextNum+')';
+  err.textContent='';
+
+  showToast(`✓ ${numInt} créé et ajouté au départ`);
 }
 
 function toggleDispoChip(num){
