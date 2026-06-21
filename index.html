@@ -188,6 +188,25 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .inv-chip.chantier{border-color:var(--accent);color:var(--accent);background:rgba(249,115,22,.07)}
 .inv-chip.hs{border-color:var(--red);color:var(--red);background:rgba(220,38,38,.07)}
 .inv-chip:hover{filter:brightness(.92)}
+/* Dashboard accueil */
+.dash-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px}
+.dash-kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center}
+.dash-kpi .val{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;line-height:1}
+.dash-kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.dash-kpi.dgreen{border-left:4px solid var(--green)}
+.dash-kpi.dorange{border-left:4px solid var(--accent)}
+.dash-kpi.dred{border-left:4px solid var(--red);cursor:pointer}
+.dash-section-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.dash-quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:18px}
+.dash-quick-btn{padding:12px 14px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:left;transition:all .15s;display:flex;align-items:center;gap:10px;width:100%}
+.dash-quick-btn:hover{border-color:var(--accent);background:rgba(249,115,22,.05)}
+.dash-quick-btn .dq-icon{font-size:20px;flex-shrink:0}
+.dash-mvt{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.dash-mvt:last-child{border-bottom:none}
+.dash-mvt .dm-type{font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.dm-type.sortie{background:rgba(249,115,22,.15);color:var(--accent)}
+.dm-type.retour{background:rgba(22,163,74,.15);color:var(--green)}
+.dm-type.transfert{background:rgba(37,99,235,.15);color:var(--blue)}
 .terrain-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:14px}
 .terrain-card .tc-chef{font-weight:700;font-size:14px;margin-bottom:6px}
 .terrain-card .tc-machines{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
@@ -225,6 +244,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="logo">CHOK BETON<span> Matériel</span></div>
   <nav>
     <button class="active" onclick="showPage('login')" id="nav-login">Connexion</button>
+    <button onclick="showPage('accueil')" id="nav-accueil" style="display:none">🏠 Accueil</button>
     <button onclick="showPage('jour')" id="nav-jour" style="display:none">📅 Jour</button>
     <button onclick="showPage('stock')" id="nav-stock" style="display:none">🏭 Dépôt</button>
     <button onclick="showPage('inventaire')" id="nav-inventaire" style="display:none">📦 Inventaire</button>
@@ -274,6 +294,42 @@ tr:hover td{background:rgba(255,255,255,.02)}
       oninput="checkPin()" onkeydown="if(event.key==='Escape')closePinModal()">
     <div class="pin-err" id="pin-err"></div>
     <button class="btn btn-secondary" style="width:100%" onclick="closePinModal()">Annuler</button>
+  </div>
+</div>
+
+<!-- PAGE ACCUEIL -->
+<div id="page-accueil" class="page">
+  <div class="section-header" style="margin-bottom:18px">
+    <div><h2>🏠 Tableau de bord</h2><p id="dash-date" style="color:var(--muted);font-size:13px;margin-top:2px"></p></div>
+    <button class="btn btn-secondary btn-sm" onclick="renderAccueil()">↻ Actualiser</button>
+  </div>
+  <!-- KPIs -->
+  <div class="dash-kpi-grid" id="dash-kpis"></div>
+  <!-- Accès rapide -->
+  <div class="dash-section-title">⚡ Accès rapide</div>
+  <div class="dash-quick">
+    <button class="dash-quick-btn" onclick="showPage('jour');showJourTab('depart')">
+      <span class="dq-icon">🚚</span><div><div>Départ camion</div><div style="font-size:11px;color:var(--muted)">Sortir du matériel</div></div>
+    </button>
+    <button class="dash-quick-btn" onclick="showPage('jour');showJourTab('retour')">
+      <span class="dq-icon">📥</span><div><div>Retour matériel</div><div style="font-size:11px;color:var(--muted)">Réceptionner</div></div>
+    </button>
+    <button class="dash-quick-btn" onclick="showPage('jour');showJourTab('terrain')">
+      <span class="dq-icon">🗺️</span><div><div>Vue terrain</div><div style="font-size:11px;color:var(--muted)">Qui a quoi</div></div>
+    </button>
+    <button class="dash-quick-btn" onclick="showPage('inventaire')">
+      <span class="dq-icon">📦</span><div><div>Inventaire</div><div style="font-size:11px;color:var(--muted)">Parc complet</div></div>
+    </button>
+  </div>
+  <!-- Stock dépôt -->
+  <div class="dash-section-title">🏭 Stock au dépôt <span style="font-weight:400;font-size:12px;color:var(--muted)" id="dash-depot-count"></span></div>
+  <div class="card" style="padding:12px;margin-bottom:16px">
+    <div id="dash-depot-stock"></div>
+  </div>
+  <!-- Derniers mouvements -->
+  <div class="dash-section-title">🕐 Derniers mouvements</div>
+  <div class="card" style="padding:0;margin-bottom:0">
+    <div id="dash-mvts"></div>
   </div>
 </div>
 
@@ -503,6 +559,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
     <input type="text" id="inv-search" placeholder="N°, modèle, fournisseur…" oninput="renderInventaire()" style="flex:1;min-width:180px">
+    <button id="inv-filter-depot-btn" class="btn btn-secondary btn-sm" onclick="toggleInvDepotFilter()" style="white-space:nowrap">📦 Dépôt seul</button>
     <button id="inv-view-btn" class="btn btn-secondary btn-sm" onclick="toggleInvView()" title="Changer de vue" style="white-space:nowrap"><i class="ti ti-layout-list"></i> Groupé</button>
     <select id="inv-filter-cat" onchange="renderInventaire()" style="min-width:160px">
       <option value="">Toutes familles</option>
@@ -962,10 +1019,10 @@ function applyLogin(){
   const badge=document.getElementById('role-badge');
   if(currentRole==='depot'){
     badge.textContent='🏭 Dépôt';badge.className='role-badge depot';
-    ['nav-jour','nav-stock','nav-inventaire','nav-personnel'].forEach(id=>document.getElementById(id).style.display='inline-block');
+    ['nav-accueil','nav-jour','nav-stock','nav-inventaire','nav-personnel'].forEach(id=>document.getElementById(id).style.display='inline-block');
     document.getElementById('nav-direction').style.display='none';
     initDepotSelects();
-    showPage('jour');
+    showPage('accueil');
   } else {
     badge.textContent='📊 Direction';badge.className='role-badge direction';
     ['nav-jour','nav-stock','nav-inventaire','nav-personnel'].forEach(id=>document.getElementById(id).style.display='none');
@@ -977,7 +1034,7 @@ function applyLogin(){
 
 function logout(){
   currentRole=null;
-  ['nav-jour','nav-stock','nav-inventaire','nav-personnel','nav-direction'].forEach(id=>document.getElementById(id).style.display='none');
+  ['nav-accueil','nav-jour','nav-stock','nav-inventaire','nav-personnel','nav-direction'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('nav-login').style.display='inline-block';
   document.getElementById('btn-logout').style.display='none';
   document.getElementById('role-badge').textContent='Non connecté';
@@ -999,6 +1056,7 @@ function showPageRaw(name){
 
 function showPage(name){
   showPageRaw(name);
+  if(name==='accueil') renderAccueil();
   if(name==='jour') initJourPage();
   if(name==='stock') renderStock();
   if(name==='inventaire') renderInventaire();
@@ -1729,6 +1787,19 @@ async function deleteMouvement(id){
   renderHistorique();renderDirection();if(currentDirTab==='stats')renderDirStats();updateAlerteBadge();showToast('Mouvement annulé','red');
   try{await db.collection('mouvements').doc(id).delete();}catch(e){showToast('Erreur: '+e.message,'red');}
 }
+// ═══ INVENTAIRE — filtre dépôt ═══
+let invDepotOnly=false;
+function toggleInvDepotFilter(){
+  invDepotOnly=!invDepotOnly;
+  const btn=document.getElementById('inv-filter-depot-btn');
+  if(btn){
+    btn.style.borderColor=invDepotOnly?'var(--green)':'';
+    btn.style.color=invDepotOnly?'var(--green)':'';
+    btn.style.background=invDepotOnly?'rgba(22,163,74,.08)':'';
+  }
+  renderInventaire();
+}
+
 let invViewMode='grouped'; // 'grouped' | 'list'
 function toggleInvView(){
   invViewMode=invViewMode==='grouped'?'list':'grouped';
@@ -1743,7 +1814,8 @@ function filterInvList(){
   return machines.filter(m=>{
     const ms=!search||m.numInterne.toLowerCase().includes(search)||m.modele.toLowerCase().includes(search)||(m.numFournisseur||'').toLowerCase().includes(search)||dispNum(m).toLowerCase().includes(search);
     const mc=!fc||m.famille===fc||m.sousFamille===fc||m.categorie===fc;
-    return ms&&mc&&(!fe||m.etat===fe);
+    const mloc=!invDepotOnly||getLoc(m.numInterne).where==='depot';
+    return ms&&mc&&mloc&&(!fe||m.etat===fe);
   });
 }
 function renderInventaire(){
@@ -1823,6 +1895,77 @@ function renderInventaireListe(){
     {k:'act',label:'',sortable:false,cell:m=>`<span style="white-space:nowrap"><button class="btn btn-secondary btn-sm" onclick="openEditEtat('${m.id}')">Modifier</button> <button class="btn btn-sm" title="Supprimer" style="background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.25)" onclick="deleteMachine('${m.id}')"><i class="ti ti-trash"></i></button></span>`}
   ];
   document.getElementById('inventaire-table').innerHTML=buildSortableTable(cols,list,sortState.inv,'sortState.inv','renderInventaireListe');
+}
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD ACCUEIL
+// ═══════════════════════════════════════════════════════
+function renderAccueil(){
+  // Date
+  const now=new Date();
+  document.getElementById('dash-date').textContent=now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  // KPIs
+  const actives=machines.filter(m=>m.etat==='Actif');
+  const nDepot=actives.filter(m=>getLoc(m.numInterne).where==='depot').length;
+  const nChantier=actives.filter(m=>getLoc(m.numInterne).where==='chantier').length;
+  const nHS=machines.filter(m=>m.etat==='En panne'||m.etat==='En réparation').length;
+  const nAlertes=getAlertes().length;
+  document.getElementById('dash-kpis').innerHTML=`
+    <div class="dash-kpi"><div class="val">${machines.length}</div><div class="lbl">Total machines</div></div>
+    <div class="dash-kpi dgreen"><div class="val">${nDepot}</div><div class="lbl">Au dépôt</div></div>
+    <div class="dash-kpi dorange"><div class="val">${nChantier}</div><div class="lbl">En chantier</div></div>
+    <div class="dash-kpi dred" onclick="showPage('jour');showJourTab('terrain')" title="Voir les alertes"><div class="val">${nHS}</div><div class="lbl">HS / Réparation</div></div>
+    ${nAlertes?`<div class="dash-kpi dred" onclick="goToAlertes()" title="Voir les alertes"><div class="val">⚠ ${nAlertes}</div><div class="lbl">Alertes</div></div>`:''}`;
+
+  // Stock dépôt groupé
+  const familles=['Carotteuse','Scie','Télécommande','Ibox','Marteau Piqueur','Groupe Électrogène','Autre matériel'];
+  const enDepot=machines.filter(m=>m.etat==='Actif'&&getLoc(m.numInterne).where==='depot');
+  document.getElementById('dash-depot-count').textContent=enDepot.length?`— ${enDepot.length} machine${enDepot.length>1?'s':''}` :'';
+  if(!enDepot.length){
+    document.getElementById('dash-depot-stock').innerHTML='<div style="color:var(--muted);font-size:13px;padding:4px 0">Aucune machine au dépôt actuellement.</div>';
+  } else {
+    let html='';
+    familles.forEach(fam=>{
+      const famMs=enDepot.filter(m=>m.famille===fam);
+      if(!famMs.length) return;
+      const modeles=(MODELES_BY_FAM[fam]||[]).filter(mod=>famMs.some(m=>m.modele===mod));
+      famMs.forEach(m=>{if(!modeles.includes(m.modele))modeles.push(m.modele);});
+      let chips='';
+      modeles.forEach(mod=>{
+        famMs.filter(m=>m.modele===mod).forEach(m=>{
+          chips+=`<span class="inv-chip depot" style="cursor:default">${dispNum(m)}</span>`;
+        });
+      });
+      if(chips) html+=`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${fam}</div><div class="inv-machine-chips">${chips}</div></div>`;
+    });
+    // sans famille
+    const autres=enDepot.filter(m=>!familles.includes(m.famille));
+    if(autres.length){
+      const chips=autres.map(m=>`<span class="inv-chip depot" style="cursor:default">${dispNum(m)}</span>`).join('');
+      html+=`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Autre</div><div class="inv-machine-chips">${chips}</div></div>`;
+    }
+    document.getElementById('dash-depot-stock').innerHTML=html;
+  }
+
+  // Derniers mouvements (10)
+  const sorted=[...mouvements].sort((a,b)=>b.ts-a.ts).slice(0,10);
+  if(!sorted.length){
+    document.getElementById('dash-mvts').innerHTML='<div class="empty"><div class="icon">📋</div>Aucun mouvement enregistré</div>';
+  } else {
+    document.getElementById('dash-mvts').innerHTML=sorted.map(mv=>{
+      const typeCls=mv.type==='SORTIE'?'sortie':mv.type==='RETOUR'?'retour':'transfert';
+      const typeLabel=mv.type==='SORTIE'?'DÉPART':mv.type==='RETOUR'?'RETOUR':'TRANSFERT';
+      const nb=mv.machines?mv.machines.length:0;
+      const who=mv.type==='TRANSFERT'?`${mv.from||'?'} → ${mv.to||'?'}`:mv.chef||'?';
+      return`<div class="dash-mvt">
+        <span class="dm-type ${typeCls}">${typeLabel}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${who}</span>
+        <span style="color:var(--muted);font-size:12px;flex-shrink:0">${nb} machine${nb>1?'s':''}</span>
+        <span style="color:var(--muted);font-size:11px;font-family:'DM Mono',monospace;flex-shrink:0;margin-left:10px">${mv.date||''}</span>
+      </div>`;
+    }).join('');
+  }
 }
 
 // ═══════════════════════════════════════════════════════
