@@ -208,6 +208,20 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dm-type.retour{background:rgba(22,163,74,.15);color:var(--green)}
 .dm-type.transfert{background:rgba(37,99,235,.15);color:var(--blue)}
 /* Accessoires machine */
+/* Accessoires sur la page Départ */
+.dep-acc-section{background:rgba(249,115,22,.04);border:1px solid rgba(249,115,22,.25);border-radius:8px;padding:12px 14px}
+.dep-acc-title{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.dep-acc-block{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:8px}
+.dep-acc-block:last-child{margin-bottom:0}
+.dep-acc-machine{font-family:'DM Mono',monospace;font-weight:700;color:var(--accent);font-size:13px;margin-bottom:8px}
+.dep-acc-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.dep-acc-row:last-child{margin-bottom:0}
+.dep-acc-lbl{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;width:105px;flex-shrink:0}
+.dep-acc-cb{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:5px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;font-size:12px;font-family:'DM Mono',monospace;transition:all .12s;user-select:none}
+.dep-acc-cb.on{border-color:var(--blue);background:rgba(37,99,235,.1);color:var(--blue);font-weight:700}
+.dep-acc-qty{display:inline-flex;align-items:center;gap:6px}
+.dep-acc-qty button{width:26px;height:26px;border-radius:5px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center;padding:0;font-family:monospace}
+.dep-acc-qty .qcount{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;min-width:22px;text-align:center}
 .acc-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;font-size:11px;font-family:'DM Mono',monospace;background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.3);color:var(--blue)}
 .acc-chip .rm{cursor:pointer;color:var(--muted);font-size:13px;line-height:1}.acc-chip .rm:hover{color:var(--red)}
 .inv-chip-acc{font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;line-height:1.4}
@@ -434,6 +448,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <button class="btn btn-primary" onclick="creerEtAjouter()">✓ Créer et ajouter au départ</button>
       </div>
       <div id="dep-chips" class="chip-list"></div>
+      <div id="dep-accessories-section" style="display:none;margin-top:12px"></div>
       <div class="form-row" style="margin-top:12px">
         <div class="form-group" style="max-width:200px">
           <label>Date de départ</label>
@@ -1259,7 +1274,7 @@ function getDepChef(){
   return depManuelActive?document.getElementById('dep-chef-manuel').value.trim():document.getElementById('dep-chef').value;
 }
 function onDepChefChange(){
-  depBuffer=[];renderDepChips();renderDepChipsPicker();
+  depBuffer=[];depAccMap={};renderDepChips();renderDepChipsPicker();
   // Fermer les panneaux ouverts
   document.getElementById('dep-stock-wrap').style.display='none';
   document.getElementById('dep-create-wrap').style.display='none';
@@ -1461,9 +1476,11 @@ function renderDepChips(){
     const m=machines.find(x=>x.numInterne===n);
     return`<div class="chip" style="border-color:var(--accent)"><span class="mono" style="color:var(--accent);font-weight:700">${m?dispNum(m):n}</span><span class="rm" onclick="removeDepChip('${n}')">✕</span></div>`;
   }).join('');
+  renderDepAccessoires();
 }
 function removeDepChip(num){
   depBuffer=depBuffer.filter(n=>n!==num);
+  delete depAccMap[num];
   renderDepChips();renderDepChipsPicker();
   const sugg=document.getElementById('sugg-'+num);
   if(sugg){sugg.style.borderColor='';sugg.style.background='';}
@@ -1473,11 +1490,93 @@ async function validerDepart(){
   if(!chef){showToast('Sélectionnez un intervenant','red');return;}
   if(!depBuffer.length){showToast('Ajoutez au moins une machine','red');return;}
   const date=document.getElementById('dep-date').value;
+  // Récupérer les accessoires pour chaque scie compatible
+  const machineAccessoires={};
+  depBuffer.forEach(num=>{
+    const m=machines.find(x=>x.numInterne===num);
+    if(m&&SCIE_ACC_MODELS.includes(m.modele)&&m.famille==='Scie'){
+      machineAccessoires[num]=getDepAccArray(num);
+    }
+  });
   const mvt={id:genId(),type:'SORTIE',date,chef,machines:[...depBuffer],ts:Date.now()};
+  if(Object.keys(machineAccessoires).length) mvt.machineAccessoires=machineAccessoires;
   mouvements.push(mvt);
   showToast(`✓ Départ — ${depBuffer.length} machine(s) → ${chef.split(' ')[0]}`);
-  depBuffer=[];renderDepChips();renderDepChipsPicker();onDepChefChange();updateAlerteBadge();renderJourAlertes();
+  depBuffer=[];depAccMap={};renderDepChips();renderDepChipsPicker();onDepChefChange();updateAlerteBadge();renderJourAlertes();
   try{await fsAddMouvement(mvt);}catch(e){showToast('Erreur sauvegarde: '+e.message,'red');}
+}
+
+// ═══ ACCESSOIRES DÉPART ═══
+let depAccMap={};
+function initDepAcc(num){
+  if(!depAccMap[num]) depAccMap[num]={cn:[],cr:[],r20:0,r10:0};
+}
+function renderDepAccessoires(){
+  const wrap=document.getElementById('dep-accessories-section');
+  if(!wrap) return;
+  const scieNums=depBuffer.filter(n=>{
+    const m=machines.find(x=>x.numInterne===n);
+    return m&&SCIE_ACC_MODELS.includes(m.modele)&&m.famille==='Scie';
+  });
+  if(!scieNums.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  wrap.innerHTML=`<div class="dep-acc-section">
+    <div class="dep-acc-title">📐 Accessoires des scies</div>
+    ${scieNums.map(num=>{
+      initDepAcc(num);
+      const m=machines.find(x=>x.numInterne===num);
+      const acc=depAccMap[num];
+      return`<div class="dep-acc-block">
+        <div class="dep-acc-machine">${m?dispNum(m):num}</div>
+        <div class="dep-acc-row">
+          <span class="dep-acc-lbl">Carter Normal</span>
+          ${['800','1200','1600'].map(s=>`<span class="dep-acc-cb${acc.cn.includes(s)?' on':''}" onclick="toggleDepAccCb('${num}','cn','${s}',this)">${s}</span>`).join('')}
+        </div>
+        <div class="dep-acc-row">
+          <span class="dep-acc-lbl">Carter Ras</span>
+          ${['800','1200','1600'].map(s=>`<span class="dep-acc-cb${acc.cr.includes(s)?' on':''}" onclick="toggleDepAccCb('${num}','cr','${s}',this)">${s}</span>`).join('')}
+        </div>
+        <div class="dep-acc-row">
+          <span class="dep-acc-lbl">Rail 2.0m</span>
+          <div class="dep-acc-qty">
+            <button onclick="changeDepRail('${num}','r20',-1)">−</button>
+            <span class="qcount" id="dep-r20-${num}">${acc.r20}</span>
+            <button onclick="changeDepRail('${num}','r20',1)">+</button>
+          </div>
+        </div>
+        <div class="dep-acc-row">
+          <span class="dep-acc-lbl">Rail 1.0m</span>
+          <div class="dep-acc-qty">
+            <button onclick="changeDepRail('${num}','r10',-1)">−</button>
+            <span class="qcount" id="dep-r10-${num}">${acc.r10}</span>
+            <button onclick="changeDepRail('${num}','r10',1)">+</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function toggleDepAccCb(num,type,size,el){
+  initDepAcc(num);
+  const arr=depAccMap[num][type];
+  const idx=arr.indexOf(size);
+  if(idx>=0){arr.splice(idx,1);el.classList.remove('on');}
+  else{arr.push(size);el.classList.add('on');}
+}
+function changeDepRail(num,type,delta){
+  initDepAcc(num);
+  depAccMap[num][type]=Math.max(0,depAccMap[num][type]+delta);
+  const el=document.getElementById(`dep-${type}-${num}`);
+  if(el) el.textContent=depAccMap[num][type];
+}
+function getDepAccArray(num){
+  const acc=depAccMap[num];if(!acc) return[];
+  const r=[];
+  acc.cn.forEach(s=>r.push('Carter Normal '+s));
+  acc.cr.forEach(s=>r.push('Carter Ras '+s));
+  if(acc.r20>0) r.push('Rail 2.0m ×'+acc.r20);
+  if(acc.r10>0) r.push('Rail 1.0m ×'+acc.r10);
+  return r;
 }
 
 // RETOUR
