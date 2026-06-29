@@ -228,6 +228,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .terrain-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:14px}
 .terrain-card .tc-chef{font-weight:700;font-size:14px;margin-bottom:6px}
 .terrain-card .tc-machines{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+/* Accessoires = matériels suivis (carter, rail…) */
+.acc-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.35);color:var(--blue);margin:1px}
+.tc-acc-section{margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)}
+.tc-acc-title{font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.tc-acc-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:4px}
+.tc-acc-row .tc-acc-machine{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--accent);min-width:74px}
+.ret-acc{display:flex;flex-wrap:wrap;gap:3px;width:100%;margin-top:4px;padding-left:26px}
+.dm-acc{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
 #global-search{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;width:200px;transition:border-color .15s}
 #global-search:focus{outline:none;border-color:var(--accent);width:240px}
 #search-results{position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:9px;margin-top:4px;display:none;max-height:300px;overflow-y:auto;min-width:280px;z-index:200}
@@ -1588,11 +1596,12 @@ function loadRetourMachines(){
   retBuffer=retBuffer.filter(n=>enC.some(m=>m.numInterne===n));
   if(!enC.length){cont.innerHTML='<p style="color:var(--muted);font-size:13px">Aucune machine en chantier pour cet intervenant.</p>';return;}
   cont.innerHTML=`<p style="font-size:12px;color:var(--muted);margin-bottom:8px">${enC.length} machine(s) en chantier — cochez celles qui rentrent :</p>
-    ${enC.map(m=>{const d=getLoc(m.numInterne).date;const days=d?daysSince(d):null;
-      return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:6px;margin-bottom:6px;cursor:pointer">
+    ${enC.map(m=>{const d=getLoc(m.numInterne).date;const days=d?daysSince(d):null;const accs=getMachineAccessoires(m.numInterne);
+      return`<label style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 12px;background:var(--surface2);border-radius:6px;margin-bottom:6px;cursor:pointer">
         <input type="checkbox" value="${m.numInterne}" ${retBuffer.includes(m.numInterne)?'checked':''} onchange="toggleRet('${m.numInterne}',this.checked)">
         <span class="mono fw600 text-accent">${dispNum(m)}</span>
         ${days!==null?`<span class="badge ${days>SEUIL_JOURS?'badge-red':'badge-gray'}">${days}j</span>`:''}
+        ${accs.length?`<div class="ret-acc"><span style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.4px;width:100%">À vérifier au retour :</span>${accTagsHTML(accs)}</div>`:''}
       </label>`;
     }).join('')}
     <button class="btn btn-secondary btn-sm" onclick="retSelectAll(${JSON.stringify(enC.map(m=>m.numInterne))})">Tout sélectionner</button>`;
@@ -1605,6 +1614,10 @@ async function validerRetour(){
   const date=document.getElementById('ret-date').value;
   const etat=document.getElementById('ret-etat').value;
   const mvt={id:genId(),type:'RETOUR',date,chef,machines:[...retBuffer],etat,ts:Date.now()};
+  // Journaliser les accessoires rentrés avec chaque machine
+  const retAcc={};
+  retBuffer.forEach(num=>{const a=getMachineAccessoires(num);if(a.length)retAcc[num]=a;});
+  if(Object.keys(retAcc).length) mvt.machineAccessoires=retAcc;
   mouvements.push(mvt);
   if(etat!=='OK'){
     retBuffer.forEach(num=>{const m=machines.find(x=>x.numInterne===num);if(m)m.etat=etat==='PANNE'?'En panne':'En réparation';});
@@ -1629,7 +1642,7 @@ function renderRetoursJour(){
   if(!list.length){cont.innerHTML='';return;}
   cont.innerHTML=`<div class="card"><h3>Retours du jour</h3><div class="table-wrap"><table>
     <thead><tr><th>Intervenant</th><th>Machines</th><th>État</th></tr></thead>
-    <tbody>${list.map(r=>`<tr><td>${r.chef}</td><td>${(r.machines||[]).map(n=>`<span class="badge badge-green mono">${n}</span>`).join(' ')}</td><td>${r.etat==='OK'?'✅':r.etat==='PANNE'?'⚠️ Panne':'🔧 Réparation'}</td></tr>`).join('')}</tbody>
+    <tbody>${list.map(r=>`<tr><td>${r.chef}</td><td>${(r.machines||[]).map(n=>{const accs=(r.machineAccessoires&&r.machineAccessoires[n])||[];return`<div style="margin-bottom:3px"><span class="badge badge-green mono">${n}</span>${accs.length?`<div class="dm-acc">${accTagsHTML(accs)}</div>`:''}</div>`;}).join('')}</td><td>${r.etat==='OK'?'✅':r.etat==='PANNE'?'⚠️ Panne':'🔧 Réparation'}</td></tr>`).join('')}</tbody>
   </table></div></div>`;
 }
 
@@ -1649,6 +1662,7 @@ function renderTerrain(){
         </div>
       </div>
       <div class="tc-machines">${mes.map(m=>{const d=getLoc(m.numInterne).date;const days=d?daysSince(d):null;return`<span class="badge ${days!==null&&days>SEUIL_JOURS?'badge-red':'badge-blue'} mono" title="${m.numInterne}${days!==null?' — '+days+'j':''}">${dispNum(m)}${days!==null?' ('+days+'j)':''}</span>`;}).join('')}</div>
+      ${(()=>{const blocks=mes.map(m=>{const accs=getMachineAccessoires(m.numInterne);if(!accs.length)return'';return`<div class="tc-acc-row"><span class="tc-acc-machine">${dispNum(m)}</span><span>${accTagsHTML(accs)}</span></div>`;}).filter(Boolean).join('');return blocks?`<div class="tc-acc-section"><div class="tc-acc-title">Accessoires sortis</div>${blocks}</div>`:'';})()}
       <div class="terrain-card-actions">
         <button class="tc-action ret" onclick="goToRetourFor(this.dataset.c)" data-c="${chef}"><i class="ti ti-arrow-back-up"></i> Retour dépôt</button>
         <button class="tc-action trf" onclick="goToTransfertFor(this.dataset.c)" data-c="${chef}"><i class="ti ti-arrows-exchange"></i> Transférer</button>
@@ -1909,6 +1923,19 @@ async function saveEtatFS(){
 const SCIE_ACC_MODELS=['TS10','TS20','HQ20','HQ220'];
 // Accessoires (carter, rail…) UNIQUEMENT pour les vraies scies — jamais télécommande/ibox
 function isScieAcc(m){return !!m && m.famille==='Scie' && SCIE_ACC_MODELS.includes(m.modele);}
+// Accessoires actuellement SORTIS avec une machine (suit la dernière sortie, à travers les transferts)
+function getMachineAccessoires(num){
+  const mvts=mouvements.filter(m=>m.machines&&m.machines.includes(num))
+    .sort((a,b)=>(new Date(b.date)-new Date(a.date))||(b.ts-a.ts));
+  for(const mv of mvts){
+    if(mv.type==='RETOUR') return [];          // rentrée au dépôt → plus rien en cours
+    if(mv.type==='SORTIE') return (mv.machineAccessoires&&mv.machineAccessoires[num])||[];
+    // TRANSFERT : les accessoires suivent la machine → on remonte jusqu'à la sortie d'origine
+  }
+  return [];
+}
+// Rendu HTML d'une liste d'accessoires en étiquettes
+function accTagsHTML(accs){return (accs||[]).map(a=>`<span class="acc-tag">📐 ${a}</span>`).join('');}
 const ACC_TYPES={'Carter Normal':['800','1200','1600'],'Carter Ras':['800','1200','1600'],'Rail':['2.0m','1.0m']};
 let editAccList=[];
 
