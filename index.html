@@ -207,6 +207,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dm-type.sortie{background:rgba(249,115,22,.15);color:var(--accent)}
 .dm-type.retour{background:rgba(22,163,74,.15);color:var(--green)}
 .dm-type.transfert{background:rgba(37,99,235,.15);color:var(--blue)}
+/* Accessoires machine */
+.acc-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;font-size:11px;font-family:'DM Mono',monospace;background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.3);color:var(--blue)}
+.acc-chip .rm{cursor:pointer;color:var(--muted);font-size:13px;line-height:1}.acc-chip .rm:hover{color:var(--red)}
+.inv-chip-acc{font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;line-height:1.4}
 .terrain-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:14px}
 .terrain-card .tc-chef{font-weight:700;font-size:14px;margin-bottom:6px}
 .terrain-card .tc-machines{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
@@ -749,6 +753,23 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <label>Notes</label>
       <textarea id="edit-notes"></textarea>
     </div>
+    <!-- Accessoires (scies TS10/TS20/HQ20/HQ220) -->
+    <div id="edit-accessories-wrap" style="display:none;margin-bottom:10px">
+      <label style="margin-bottom:6px;display:block">Accessoires</label>
+      <div id="edit-acc-chips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:20px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select id="acc-type" onchange="onAccTypeChange()" style="flex:1;min-width:130px">
+          <option value="">— Type —</option>
+          <option>Carter Normal</option>
+          <option>Carter Ras</option>
+          <option>Rail</option>
+        </select>
+        <select id="acc-size" disabled style="flex:1;min-width:90px">
+          <option value="">— Taille —</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="addAcc()" style="flex-shrink:0">+ Ajouter</button>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-etat')">Annuler</button>
       <button class="btn btn-primary" onclick="saveEtatFS()">Enregistrer</button>
@@ -805,7 +826,7 @@ const MODELES_BY_FAM = {
   'Carotteuse': ['DD350'],
   'Scie': ['TS5','TS10','TS20','HQ220','HQ20','HQ Sol Thermique','WS15','WS30'],
   'Télécommande': ['TS10','TS20'],
-  'Ibox': ['TS20'],
+  'Ibox': ['TS20','HQ20'],
   'Marteau Piqueur': ['Bosch','Gros Hilti'],
   'Groupe Électrogène': ['Bleu 1','Bleu 2','220 V','380 V'],
   'Autre matériel': ['Pompe','Aspirateur','Autre']
@@ -842,7 +863,8 @@ function dispNum(m){
 const FAM_PREFIX={
   'Télécommande:TS10':'TC10',
   'Télécommande:TS20':'TC20',
-  'Ibox:TS20':'IBX',
+  'Ibox:TS20':'IBX-TS20',
+  'Ibox:HQ20':'IBX-HQ20',
   'Scie:HQ Sol Thermique':'HQST',
   'Marteau Piqueur:Bosch':'MPB',
   'Marteau Piqueur:Gros Hilti':'MPH',
@@ -1754,10 +1776,20 @@ async function saveMachineFS(){
 function openEditEtat(id){
   const m=machines.find(x=>x.id===id);if(!m)return;
   document.getElementById('edit-id').value=id;
-  document.getElementById('edit-machine-label').textContent=m.numInterne+' · '+m.modele;
+  document.getElementById('edit-machine-label').textContent=dispNum(m)+' · '+m.modele+(m.famille?` (${m.famille})`:'');
   document.getElementById('edit-four').value=m.numFournisseur||'';
   document.getElementById('edit-etat').value=m.etat;
   document.getElementById('edit-notes').value=m.notes||'';
+  // Accessoires
+  const hasAcc=SCIE_ACC_MODELS.includes(m.modele)&&m.famille==='Scie';
+  document.getElementById('edit-accessories-wrap').style.display=hasAcc?'block':'none';
+  if(hasAcc){
+    editAccList=[...(m.accessories||[])];
+    renderAccChips();
+    document.getElementById('acc-type').value='';
+    document.getElementById('acc-size').innerHTML='<option value="">— Taille —</option>';
+    document.getElementById('acc-size').disabled=true;
+  }
   document.getElementById('modal-etat').classList.add('open');
 }
 async function saveEtatFS(){
@@ -1766,9 +1798,41 @@ async function saveEtatFS(){
   m.numFournisseur=document.getElementById('edit-four').value.trim();
   m.etat=document.getElementById('edit-etat').value;
   m.notes=document.getElementById('edit-notes').value;
+  const hasAcc=SCIE_ACC_MODELS.includes(m.modele)&&m.famille==='Scie';
+  if(hasAcc) m.accessories=[...editAccList];
   closeModal('modal-etat');renderInventaire();showToast('✓ Machine mise à jour');updateAlerteBadge();
-  try{await fsUpdateMachine(id,{numFournisseur:m.numFournisseur,etat:m.etat,notes:m.notes});}catch(e){showToast('Erreur sauvegarde: '+e.message,'red');}
+  const upd={numFournisseur:m.numFournisseur,etat:m.etat,notes:m.notes};
+  if(hasAcc) upd.accessories=m.accessories;
+  try{await fsUpdateMachine(id,upd);}catch(e){showToast('Erreur sauvegarde: '+e.message,'red');}
 }
+
+// ═══ ACCESSOIRES MACHINE ═══
+const SCIE_ACC_MODELS=['TS10','TS20','HQ20','HQ220'];
+const ACC_TYPES={'Carter Normal':['800','1200','1600'],'Carter Ras':['800','1200','1600'],'Rail':['2.0m','1.0m']};
+let editAccList=[];
+
+function onAccTypeChange(){
+  const t=document.getElementById('acc-type').value;
+  const s=document.getElementById('acc-size');
+  s.innerHTML='<option value="">— Taille —</option>'+(ACC_TYPES[t]||[]).map(v=>`<option>${v}</option>`).join('');
+  s.disabled=!t;
+}
+function renderAccChips(){
+  document.getElementById('edit-acc-chips').innerHTML=editAccList.length
+    ? editAccList.map((a,i)=>`<span class="acc-chip">${a}<span class="rm" onclick="removeAcc(${i})">×</span></span>`).join('')
+    : '<span style="color:var(--muted);font-size:12px">Aucun accessoire</span>';
+}
+function addAcc(){
+  const t=document.getElementById('acc-type').value;
+  const s=document.getElementById('acc-size').value;
+  if(!t||!s){showToast('Choisir un type et une taille','red');return;}
+  editAccList.push(t+' '+s);
+  renderAccChips();
+  document.getElementById('acc-type').value='';
+  document.getElementById('acc-size').innerHTML='<option value="">— Taille —</option>';
+  document.getElementById('acc-size').disabled=true;
+}
+function removeAcc(i){editAccList.splice(i,1);renderAccChips();}
 async function deleteMachine(id){
   const m=machines.find(x=>x.id===id);if(!m)return;
   const loc=getLoc(m.numInterne);
@@ -1851,7 +1915,8 @@ function renderInventaireGrouped(){
         const loc=getLoc(m.numInterne);
         const etatCls=m.etat==='En panne'||m.etat==='En réparation'?'hs':loc.where==='depot'?'depot':'chantier';
         const tooltip=`${m.numInterne} · ${m.etat}${loc.where==='chantier'?' · '+loc.chef:''}`;
-        return`<button class="inv-chip ${etatCls}" onclick="openEditEtat('${m.id}')" title="${tooltip}">${dispNum(m)}</button>`;
+        const accs=m.accessories&&m.accessories.length?`<div class="inv-chip-acc">${m.accessories.join(' · ')}</div>`:'';
+        return`<div style="display:flex;flex-direction:column;align-items:flex-start"><button class="inv-chip ${etatCls}" onclick="openEditEtat('${m.id}')" title="${tooltip}">${dispNum(m)}</button>${accs}</div>`;
       }).join('');
       modelesHtml+=`<div class="inv-modele-group">
         <div class="inv-modele-title">
