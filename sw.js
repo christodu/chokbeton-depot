@@ -1,5 +1,5 @@
 // Service Worker — CHOK BETON Matériel
-const CACHE_NAME = 'chokbeton-v2';
+const CACHE_NAME = 'chokbeton-v3';
 
 self.addEventListener('install', e => {
   e.waitUntil(
