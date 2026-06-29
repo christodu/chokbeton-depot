@@ -1463,7 +1463,7 @@ async function creerEtAjouter(){
   if(machines.find(m=>m.numInterne===numInt)){err.textContent='⛔ Ce numéro existe déjà !';err.style.color='var(--red)';showToast('⛔ '+numInt+' déjà existant','red');return;}
   const expectedPrefix=getNumPrefix(fam,modele);
   if(!numInt.startsWith(expectedPrefix+'-')){if(!confirm(`Le numéro "${numInt}" ne commence pas par "${expectedPrefix}-". Continuer ?`)) return;}
-  const sousFamille=SCIE_SOUS[modele]||fam;
+  const sousFamille=fam==='Scie'?(SCIE_SOUS[modele]||fam):fam;
   const machine={id:genId(),numInterne:numInt,numFournisseur:numFour,famille:fam,sousFamille,categorie:sousFamille,modele,etat:'Actif',notes:'Créée depuis départ',createdAt:today()};
   machines.push(machine);
   if(!depBuffer.includes(numInt)) depBuffer.push(numInt);
@@ -1494,7 +1494,7 @@ async function validerDepart(){
   const machineAccessoires={};
   depBuffer.forEach(num=>{
     const m=machines.find(x=>x.numInterne===num);
-    if(m&&SCIE_ACC_MODELS.includes(m.modele)&&m.famille==='Scie'){
+    if(isScieAcc(m)){
       machineAccessoires[num]=getDepAccArray(num);
     }
   });
@@ -1516,7 +1516,7 @@ function renderDepAccessoires(){
   if(!wrap) return;
   const scieNums=depBuffer.filter(n=>{
     const m=machines.find(x=>x.numInterne===n);
-    return m&&SCIE_ACC_MODELS.includes(m.modele)&&m.famille==='Scie';
+    return isScieAcc(m);
   });
   if(!scieNums.length){wrap.style.display='none';return;}
   wrap.style.display='block';
@@ -1866,7 +1866,7 @@ async function saveMachineFS(){
   const notes=document.getElementById('inv-notes').value;
   if(!numInt){showToast('N° interne obligatoire','red');return;}
   if(machines.find(m=>m.numInterne===numInt)){showToast('⛔ Numéro déjà existant !','red');return;}
-  const sousFamille=SCIE_SOUS[invModele]||invFamille;
+  const sousFamille=invFamille==='Scie'?(SCIE_SOUS[invModele]||invFamille):invFamille;
   const machine={id:genId(),numInterne:numInt,numFournisseur:numFour,famille:invFamille,sousFamille,categorie:sousFamille,modele:invModele,etat,notes,createdAt:today()};
   machines.push(machine);
   closeModal('modal-machine');renderInventaire();showToast('✓ '+numInt+' ajouté au parc');
@@ -1880,7 +1880,7 @@ function openEditEtat(id){
   document.getElementById('edit-etat').value=m.etat;
   document.getElementById('edit-notes').value=m.notes||'';
   // Accessoires
-  const hasAcc=SCIE_ACC_MODELS.includes(m.modele)&&m.famille==='Scie';
+  const hasAcc=isScieAcc(m);
   document.getElementById('edit-accessories-wrap').style.display=hasAcc?'block':'none';
   if(hasAcc){
     editAccList=[...(m.accessories||[])];
@@ -1897,7 +1897,7 @@ async function saveEtatFS(){
   m.numFournisseur=document.getElementById('edit-four').value.trim();
   m.etat=document.getElementById('edit-etat').value;
   m.notes=document.getElementById('edit-notes').value;
-  const hasAcc=SCIE_ACC_MODELS.includes(m.modele)&&m.famille==='Scie';
+  const hasAcc=isScieAcc(m);
   if(hasAcc) m.accessories=[...editAccList];
   closeModal('modal-etat');renderInventaire();showToast('✓ Machine mise à jour');updateAlerteBadge();
   const upd={numFournisseur:m.numFournisseur,etat:m.etat,notes:m.notes};
@@ -1907,6 +1907,8 @@ async function saveEtatFS(){
 
 // ═══ ACCESSOIRES MACHINE ═══
 const SCIE_ACC_MODELS=['TS10','TS20','HQ20','HQ220'];
+// Accessoires (carter, rail…) UNIQUEMENT pour les vraies scies — jamais télécommande/ibox
+function isScieAcc(m){return !!m && m.famille==='Scie' && SCIE_ACC_MODELS.includes(m.modele);}
 const ACC_TYPES={'Carter Normal':['800','1200','1600'],'Carter Ras':['800','1200','1600'],'Rail':['2.0m','1.0m']};
 let editAccList=[];
 
